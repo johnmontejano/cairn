@@ -28,6 +28,26 @@ export async function GET(): Promise<Response> {
     return `${services.queue.kind} queue reachable`;
   });
 
+  // The failure this is here to catch: a deployment that expects a worker and
+  // does not have one. Nothing else notices — uploads simply never finish.
+  checks.jobs = await check(async () => {
+    const how = services.config.inlineJobs
+      ? 'drained by the web process'
+      : 'drained by a separate worker';
+    if (services.config.inlineJobs) return how;
+    const result = await services.handle.db.execute(
+      sql`SELECT count(*)::int AS stale FROM jobs
+          WHERE state = 'queued' AND run_at < now() - interval '5 minutes'`,
+    );
+    const stale = Number((result as unknown as Array<{ stale: number }>)[0]?.stale ?? 0);
+    if (stale > 0) {
+      throw new Error(
+        `${stale} job(s) queued for over five minutes. Is the worker running? Set CAIRN_INLINE_JOBS=always to run them in the web process instead.`,
+      );
+    }
+    return how;
+  });
+
   checks.storage = await check(async () => {
     await services.handle.db.execute(sql`SELECT 1 FROM stored_objects LIMIT 1`);
     return services.config.providers.storage.detail;

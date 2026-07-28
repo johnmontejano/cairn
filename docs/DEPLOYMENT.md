@@ -7,6 +7,65 @@ before anyone commits to them.
 Target: Supabase (database, storage, queue), Vercel (website), Railway (worker),
 WorkOS (sign-in). See [cost controls](COST_CONTROLS.md) for what that costs.
 
+## Running it for nothing
+
+For **one person**, the whole thing fits in free tiers. This is a real
+configuration, not a crippled one — same schema, same encryption, same MCP
+server.
+
+| Piece                 | Free option           | The catch                                  |
+| --------------------- | --------------------- | ------------------------------------------ |
+| Website               | Vercel Hobby          | Personal, non-commercial use only          |
+| Database              | Supabase Free         | Pauses after 7 days idle; no daily backups |
+| Storage               | Supabase Free         | Shares the same project quota              |
+| Sign-in               | WorkOS AuthKit        | Free to a very high user count             |
+| Extraction and search | `AI_PROVIDER=fixture` | The built-in extractor, not a hosted model |
+| Worker                | **Not deployed**      | See below                                  |
+
+The worker is the interesting one. It exists because ingestion must not run
+inside a page request — which is right for many users and unnecessary for one.
+Set:
+
+```
+CAIRN_INLINE_JOBS=always
+```
+
+and the website drains the queue itself after each action: the same handlers,
+claimed through the same queue, with the same retries and the same idempotency.
+It just happens in the request that caused it. Nothing is faked and nothing is
+skipped.
+
+Two consequences to accept:
+
+- **A large document makes one slow request.** Ingesting a long PDF happens
+  while the page waits, so it can hit your host's function time limit. Uploads
+  of a few pages are comfortable; a 300-page book is not.
+- **Nothing retries while nobody is using the site.** A job that fails and backs
+  off waits for your next action rather than a worker's next poll.
+
+Neither matters for personal use. Both do the moment a second person joins, at
+which point deploy the worker and drop the variable.
+
+`GET /api/health` reports which arrangement is live, and — when a worker is
+expected — fails if jobs have been queued for more than five minutes. That is
+the failure this setup makes possible, so it is checked rather than left to be
+discovered.
+
+### What "free" costs you
+
+- **The idle pause is the real one.** A Supabase free project sleeps after seven
+  days without traffic and returns errors until it wakes. Fine for something you
+  use weekly; not fine for something other people rely on.
+- **No managed backups on the free database.** The application's own encrypted
+  backup is therefore not optional — see [backup and recovery](BACKUP_AND_RECOVERY.md).
+- **Vercel Hobby is non-commercial.** The moment you charge for this, you need
+  Pro. That is their licence term, not a technical limit.
+- **The built-in extractor is cue-based**, so it will miss things phrased
+  unusually. Adding an API key later changes one variable.
+
+Verify each provider's current limits before relying on them; the figures above
+were checked on 2026-07-27 and free tiers change.
+
 ## 1. Database — Supabase
 
 Create a project, then in the SQL editor:

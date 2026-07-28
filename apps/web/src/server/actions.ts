@@ -52,7 +52,7 @@ import {
 } from './auth';
 import {
   assertCsrf,
-  drainIfLocal,
+  drainQueuedWork,
   enforceRateLimit,
   requireContext,
   resolveProject,
@@ -230,7 +230,7 @@ export async function addPastedText(
       mimeType: 'text/markdown',
       bytes: new TextEncoder().encode(text),
     });
-    await drainIfLocal(context.services);
+    await drainQueuedWork(context.services);
     revalidatePath('/home');
     revalidatePath('/memory');
     revalidatePath('/sources');
@@ -282,7 +282,7 @@ export async function addUploadedFiles(
         );
       }
     }
-    await drainIfLocal(context.services);
+    await drainQueuedWork(context.services);
     revalidatePath('/home');
     revalidatePath('/sources');
 
@@ -320,7 +320,7 @@ export async function addWebPage(_prev: ActionResult, formData: FormData): Promi
       canonicalUri: fetched.finalUrl,
       bytes: fetched.bytes,
     });
-    await drainIfLocal(context.services);
+    await drainQueuedWork(context.services);
     revalidatePath('/home');
     revalidatePath('/sources');
     return {
@@ -353,7 +353,7 @@ export async function loadExample(_prev: ActionResult, formData: FormData): Prom
         bytes: new TextEncoder().encode(body),
       });
     }
-    await drainIfLocal(context.services);
+    await drainQueuedWork(context.services);
     revalidatePath('/home');
     revalidatePath('/memory');
     revalidatePath('/sources');
@@ -550,7 +550,7 @@ export async function addMemoryManually(
       });
     });
 
-    await drainIfLocal(context.services);
+    await drainQueuedWork(context.services);
     revalidateMemoryViews();
     return { ok: true, message: 'Added to your review list.' };
   });
@@ -672,7 +672,7 @@ export async function syncConnection(
         payload: { connectionId },
       }),
     );
-    await drainIfLocal(context.services);
+    await drainQueuedWork(context.services);
     revalidatePath('/sources');
     revalidatePath('/home');
     return { ok: true, message: 'Checked for updates.' };

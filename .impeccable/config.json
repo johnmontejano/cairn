@@ -6,9 +6,7 @@
       {
         "rule": "side-tab",
         "value": "*",
-        "files": [
-          "apps/web/src/app/globals.css"
-        ],
+        "files": ["apps/web/src/app/globals.css"],
         "createdAt": "2026-07-28T14:39:54.979Z",
         "reason": "The rule targets accent bars on cards. This is a neutral 3px rule on a blockquote holding quoted source excerpts — the standard typographic treatment for a quotation. User confirmed."
       }

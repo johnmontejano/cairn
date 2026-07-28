@@ -74,12 +74,13 @@ than silently corrupting the index.
 
 ## Storage and queue
 
-| Variable                                    | Default             | Notes                               |
-| ------------------------------------------- | ------------------- | ----------------------------------- |
-| `STORAGE_PROVIDER`                          | `local`             | `local` \| `supabase`               |
-| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` |                     | Server-only                         |
-| `SUPABASE_STORAGE_BUCKET`                   | `cairn-raw-sources` | Keep it private                     |
-| `QUEUE_PROVIDER`                            | `postgres`          | The job table works on Supabase too |
+| Variable                                    | Default             | Notes                                                                                                                      |
+| ------------------------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `STORAGE_PROVIDER`                          | `local`             | `local` \| `supabase`                                                                                                      |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` |                     | Server-only                                                                                                                |
+| `SUPABASE_STORAGE_BUCKET`                   | `cairn-raw-sources` | Keep it private                                                                                                            |
+| `QUEUE_PROVIDER`                            | `postgres`          | The job table works on Supabase too                                                                                        |
+| `CAIRN_INLINE_JOBS`                         | `auto`              | `auto` drains inline only on the local database; `always` runs a single-user deployment with no worker; `never` forces one |
 
 ## Connectors
 

@@ -110,6 +110,16 @@ const envSchema = z.object({
   QUEUE_PROVIDER: z.enum(['postgres', 'supabase']).default('postgres'),
   CAIRN_QUEUE_NAME: z.string().default('cairn_jobs'),
 
+  /**
+   * Whether the web process drains the job queue itself.
+   *
+   * `auto` drains only against the local single-process database, where a
+   * separate worker cannot open the same file. `always` lets a single-user
+   * deployment run with no worker at all — the same handlers, claimed through
+   * the same queue, just inside the request. `never` forces a worker.
+   */
+  CAIRN_INLINE_JOBS: z.enum(['auto', 'always', 'never']).default('auto'),
+
   GOOGLE_CLIENT_ID: optionalStr,
   GOOGLE_CLIENT_SECRET: optionalStr,
   GOOGLE_REDIRECT_URI: optionalStr,
@@ -162,6 +172,8 @@ export interface AppConfig {
   readonly appUrl: string;
   readonly dataDir: string;
   readonly database: { readonly driver: 'pglite' | 'postgres'; readonly url?: string };
+  /** True when the web process drains the job queue instead of a worker. */
+  readonly inlineJobs: boolean;
   readonly providers: {
     readonly auth: ProviderStatus;
     readonly ai: ProviderStatus;
@@ -276,6 +288,13 @@ export function buildConfig(source: NodeJS.ProcessEnv = process.env): AppConfig 
     isTest: env.NODE_ENV === 'test',
     appUrl: env.CAIRN_APP_URL.replace(/\/+$/, ''),
     dataDir: resolveDataDir(env.CAIRN_LOCAL_DATA_DIR),
+    inlineJobs:
+      env.CAIRN_INLINE_JOBS === 'always'
+        ? true
+        : env.CAIRN_INLINE_JOBS === 'never'
+          ? false
+          : // `auto`: only the local single-process database needs it.
+            !env.DATABASE_URL,
     database: env.DATABASE_URL
       ? { driver: 'postgres', url: env.DATABASE_URL }
       : { driver: 'pglite' },

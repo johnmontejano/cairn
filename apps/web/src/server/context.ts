@@ -141,13 +141,16 @@ export async function enforceRateLimit(
 /**
  * Runs queued work inline when there is no separate worker to do it.
  *
- * The local database is a single-process file, so demo mode cannot also run a
- * worker process against it. Draining here keeps the one-command setup honest
- * without pretending background processing does not exist: the same handlers run,
- * claimed through the same queue.
+ * Two situations need this. The local database is a single-process file, so a
+ * worker cannot open it at the same time as the website. And a single-user
+ * deployment on free hosting may not want to pay for a second process at all.
+ *
+ * Either way the work is real: the same handlers, claimed through the same
+ * queue, with the same retries. It just happens inside the request that caused
+ * it. `CAIRN_INLINE_JOBS=never` forces a worker instead.
  */
-export async function drainIfLocal(services: CairnServices): Promise<void> {
-  if (services.config.database.driver !== 'pglite') return;
+export async function drainQueuedWork(services: CairnServices): Promise<void> {
+  if (!services.config.inlineJobs) return;
   await drainJobs(services, { maxRounds: 12, batch: 8 });
 }
 
