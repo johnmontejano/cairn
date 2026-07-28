@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { PRODUCT } from '@cairn/config';
+import { normalizeRows } from '@cairn/db';
 import { getServices } from '@cairn/ingestion';
 
 export const dynamic = 'force-dynamic';
@@ -39,7 +40,7 @@ export async function GET(): Promise<Response> {
       sql`SELECT count(*)::int AS stale FROM jobs
           WHERE state = 'queued' AND run_at < now() - interval '5 minutes'`,
     );
-    const stale = Number((result as unknown as Array<{ stale: number }>)[0]?.stale ?? 0);
+    const stale = Number(normalizeRows<{ stale: number }>(result)[0]?.stale ?? 0);
     if (stale > 0) {
       throw new Error(
         `${stale} job(s) queued for over five minutes. Is the worker running? Set CAIRN_INLINE_JOBS=always to run them in the web process instead.`,

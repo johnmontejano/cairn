@@ -3,6 +3,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import type { Uuid } from '@cairn/domain';
 import type { CairnTx, DbHandle } from '../client';
 import * as schema from '../schema';
+import { normalizeRows } from '../rows';
 import { withSystem } from '../tenancy';
 
 /**
@@ -175,9 +176,7 @@ export async function deleteProjectContent(
         )
       RETURNING vo.content_hash
     `);
-    removed['stored documents'] = Array.isArray(orphaned)
-      ? orphaned.length
-      : ((orphaned as { rows?: unknown[] }).rows?.length ?? 0);
+    removed['stored documents'] = normalizeRows(orphaned).length;
 
     await tx
       .update(schema.projects)
