@@ -1,0 +1,27 @@
+{
+  "name": "@cairn/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --import tsx --watch src/main.ts",
+    "start": "node --import tsx src/main.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cairn/config": "workspace:*",
+    "@cairn/connectors": "workspace:*",
+    "@cairn/crypto": "workspace:*",
+    "@cairn/db": "workspace:*",
+    "@cairn/domain": "workspace:*",
+    "@cairn/ingestion": "workspace:*",
+    "@cairn/search": "workspace:*",
+    "@cairn/vault": "workspace:*",
+    "drizzle-orm": "0.45.2"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.9",
+    "tsx": "4.23.1",
+    "typescript": "5.9.3"
+  }
+}

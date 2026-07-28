@@ -1,0 +1,37 @@
+{
+  "name": "@cairn/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cairn/config": "workspace:*",
+    "@cairn/connectors": "workspace:*",
+    "@cairn/crypto": "workspace:*",
+    "@cairn/db": "workspace:*",
+    "@cairn/domain": "workspace:*",
+    "@cairn/ingestion": "workspace:*",
+    "@cairn/mcp": "workspace:*",
+    "@cairn/search": "workspace:*",
+    "@cairn/ui": "workspace:*",
+    "@cairn/vault": "workspace:*",
+    "drizzle-orm": "0.45.2",
+    "next": "16.2.12",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "20.19.9",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3"
+  }
+}

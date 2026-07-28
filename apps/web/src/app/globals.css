@@ -1,0 +1,661 @@
+@import 'tailwindcss';
+@import '@cairn/ui/styles.css';
+
+/*
+ * Application layout.
+ *
+ * Tailwind supplies the reset and a few utilities; everything with a product
+ * meaning is a named class, so the markup reads as what it is.
+ */
+
+@theme {
+  --font-sans: var(--cairn-font-sans);
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  background: var(--cairn-paper);
+  color: var(--cairn-ink);
+  font-family: var(--cairn-font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+a {
+  color: var(--cairn-accent-ink);
+  text-underline-offset: 0.2em;
+}
+a:hover {
+  color: var(--cairn-accent-hover);
+}
+@media (prefers-color-scheme: dark) {
+  a {
+    color: var(--cairn-accent);
+  }
+}
+
+/* ------------------------------- shell ---------------------------------- */
+
+.cairn-shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.cairn-header {
+  border-bottom: 1px solid var(--cairn-border);
+  background: var(--cairn-surface);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.cairn-header__inner {
+  max-width: 68rem;
+  margin: 0 auto;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.cairn-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 650;
+  font-size: 1.0625rem;
+  color: var(--cairn-ink);
+  text-decoration: none;
+  letter-spacing: -0.01em;
+}
+.cairn-wordmark__mark {
+  display: block;
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+.cairn-nav {
+  display: flex;
+  gap: 0.125rem;
+  flex-wrap: wrap;
+}
+.cairn-nav__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--cairn-target);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--cairn-radius);
+  color: var(--cairn-ink-muted);
+  text-decoration: none;
+  font-weight: 550;
+}
+.cairn-nav__link:hover {
+  background: var(--cairn-surface-sunken);
+  color: var(--cairn-ink);
+}
+.cairn-nav__link[aria-current='page'] {
+  background: var(--cairn-accent-soft);
+  color: var(--cairn-accent-ink);
+}
+@media (prefers-color-scheme: dark) {
+  .cairn-nav__link[aria-current='page'] {
+    color: var(--cairn-accent);
+  }
+}
+
+.cairn-main {
+  flex: 1;
+  width: 100%;
+  max-width: 68rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+}
+.cairn-main--narrow {
+  max-width: 44rem;
+}
+
+.cairn-footer {
+  border-top: 1px solid var(--cairn-border);
+  background: var(--cairn-surface);
+  color: var(--cairn-ink-subtle);
+  font-size: 0.875rem;
+}
+.cairn-footer__inner {
+  max-width: 68rem;
+  margin: 0 auto;
+  padding: 1.25rem;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+/* ------------------------------- typography ------------------------------ */
+
+.cairn-page-title {
+  font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2rem);
+  font-weight: 650;
+  margin: 0 0 0.375rem;
+}
+.cairn-page-lede {
+  margin: 0 0 1.75rem;
+  color: var(--cairn-ink-muted);
+  max-width: 60ch;
+  font-size: 1.0625rem;
+}
+.cairn-section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+}
+
+/* --------------------------------- bits ---------------------------------- */
+
+.cairn-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.cairn-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+}
+.cairn-code-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+.cairn-code {
+  font-family: var(--cairn-font-mono);
+  font-size: 0.875rem;
+  background: var(--cairn-surface-sunken);
+  border: 1px solid var(--cairn-border);
+  border-radius: var(--cairn-radius-sm);
+  padding: 0.375rem 0.5rem;
+  overflow-wrap: anywhere;
+}
+pre.cairn-code {
+  display: block;
+  padding: 0.875rem;
+  overflow-x: auto;
+  white-space: pre;
+  line-height: 1.5;
+}
+
+.cairn-fieldset {
+  border: 1px solid var(--cairn-border);
+  border-radius: var(--cairn-radius);
+  padding: 0.75rem 0.875rem;
+  margin: 0;
+}
+.cairn-fieldset legend {
+  padding: 0 0.375rem;
+  font-weight: 550;
+  font-size: 0.9375rem;
+}
+.cairn-choice {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  min-height: var(--cairn-target);
+  padding: 0.375rem 0;
+  cursor: pointer;
+}
+.cairn-choice input {
+  margin-top: 0.375rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: none;
+}
+
+.cairn-memory-value {
+  margin: 0.5rem 0 0.875rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.cairn-meta {
+  color: var(--cairn-ink-subtle);
+  font-size: 0.875rem;
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.cairn-excerpt {
+  border-left: 3px solid var(--cairn-border-strong);
+  padding-left: 0.75rem;
+  margin: 0.5rem 0;
+  color: var(--cairn-ink-muted);
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+.cairn-answer p {
+  font-size: 1.0625rem;
+  margin: 0 0 0.75rem;
+}
+.cairn-citation-marker {
+  font-size: 0.75rem;
+  vertical-align: super;
+  color: var(--cairn-accent-ink);
+  font-weight: 650;
+  margin-left: 0.125rem;
+}
+
+.cairn-choice-grid {
+  display: grid;
+  gap: 0.875rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
+}
+.cairn-choice-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  text-align: left;
+  padding: 1.125rem;
+  min-height: 7rem;
+  border: 1px solid var(--cairn-border-strong);
+  border-radius: var(--cairn-radius-lg);
+  background: var(--cairn-surface);
+  color: var(--cairn-ink);
+  text-decoration: none;
+  cursor: pointer;
+  font: inherit;
+}
+.cairn-choice-card:hover {
+  border-color: var(--cairn-accent);
+  background: var(--cairn-accent-soft);
+}
+.cairn-choice-card__title {
+  font-weight: 600;
+  font-size: 1.0625rem;
+}
+.cairn-choice-card__body {
+  color: var(--cairn-ink-muted);
+  font-size: 0.9375rem;
+}
+
+.cairn-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+.cairn-table th,
+.cairn-table td {
+  text-align: left;
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid var(--cairn-border);
+  vertical-align: top;
+}
+.cairn-table th {
+  color: var(--cairn-ink-muted);
+  font-weight: 550;
+}
+.cairn-table-wrap {
+  overflow-x: auto;
+}
+
+/* ------------------------------------------------------------------ *
+ * The landing page
+ *
+ * The only place in the product with any visual ambition. Everything past
+ * sign-in stays quiet, because there the person is reading their own words and
+ * the interface should get out of the way. Here it has to earn the sign-up, so
+ * it carries the display serif, the warm wash, and the one illustration.
+ * ------------------------------------------------------------------ */
+
+.cairn-landing {
+  --landing-gutter: clamp(1.25rem, 4vw, 3rem);
+  position: relative;
+  isolation: isolate;
+  overflow-x: clip;
+}
+
+/* A soft warmth behind the fold. Pure CSS, so it costs nothing to load. */
+.cairn-landing::before {
+  content: '';
+  position: absolute;
+  inset: -12rem 0 auto;
+  height: 46rem;
+  z-index: -1;
+  background:
+    radial-gradient(
+      60% 55% at 22% 28%,
+      color-mix(in oklab, var(--cairn-accent) 16%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      48% 45% at 82% 12%,
+      color-mix(in oklab, var(--cairn-info) 12%, transparent),
+      transparent 70%
+    );
+  pointer-events: none;
+}
+
+.cairn-landing__inner {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding-inline: var(--landing-gutter);
+}
+
+/* --------------------------------- hero --------------------------------- */
+
+.cairn-hero {
+  display: grid;
+  gap: clamp(2rem, 5vw, 4rem);
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  align-items: center;
+  padding-block: clamp(2.5rem, 7vw, 5.5rem) clamp(2rem, 5vw, 4rem);
+}
+@media (max-width: 62rem) {
+  .cairn-hero {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cairn-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3125rem 0.75rem;
+  border-radius: 999px;
+  background: var(--cairn-surface);
+  border: 1px solid var(--cairn-border);
+  color: var(--cairn-ink-muted);
+  font-size: 0.8125rem;
+  font-weight: 550;
+  box-shadow: var(--cairn-shadow-sm);
+}
+.cairn-eyebrow::before {
+  content: '';
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border-radius: 999px;
+  background: var(--cairn-good);
+}
+
+.cairn-display {
+  font-family: var(--cairn-font-serif);
+  font-size: clamp(2.25rem, 1.4rem + 3.4vw, 3.75rem);
+  line-height: 1.06;
+  letter-spacing: -0.022em;
+  font-weight: 600;
+  margin: 1.25rem 0 0;
+  text-wrap: balance;
+}
+.cairn-display em {
+  font-style: italic;
+  color: var(--cairn-accent-ink);
+}
+@media (prefers-color-scheme: dark) {
+  .cairn-display em {
+    color: var(--cairn-accent);
+  }
+}
+
+.cairn-hero__lede {
+  margin: 1.125rem 0 0;
+  font-size: clamp(1.0625rem, 1rem + 0.3vw, 1.1875rem);
+  line-height: 1.6;
+  color: var(--cairn-ink-muted);
+  max-width: 34rem;
+}
+
+.cairn-hero__card {
+  margin-top: 2rem;
+  background: var(--cairn-surface);
+  border: 1px solid var(--cairn-border);
+  border-radius: var(--cairn-radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--cairn-shadow-lg);
+  max-width: 30rem;
+}
+.cairn-hero__card-title {
+  font-size: 1.125rem;
+  font-weight: 650;
+  margin: 0 0 1rem;
+}
+
+.cairn-hero__note {
+  margin: 1.25rem 0 0;
+  font-size: 0.875rem;
+  color: var(--cairn-ink-subtle);
+  max-width: 30rem;
+}
+
+/* --------------------------- hero illustration --------------------------- */
+
+.cairn-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  /* Room under the stack for the proof card to sit against, rather than on top
+   * of, the stones. */
+  padding-bottom: 4rem;
+}
+.cairn-art__stones {
+  width: min(100%, 21rem);
+  height: auto;
+  filter: drop-shadow(0 18px 34px rgb(34 32 29 / 0.16));
+}
+@media (prefers-color-scheme: dark) {
+  .cairn-art__stones {
+    filter: drop-shadow(0 18px 34px rgb(0 0 0 / 0.5));
+  }
+}
+
+/* The floating proof card: the product's actual argument, made visible. */
+.cairn-art__proof {
+  position: absolute;
+  right: -1rem;
+  bottom: 0;
+  width: min(19.5rem, 94%);
+  background: var(--cairn-surface-raised);
+  border: 1px solid var(--cairn-border);
+  border-radius: var(--cairn-radius);
+  padding: 0.875rem 1rem;
+  box-shadow: var(--cairn-shadow-lg);
+  font-size: 0.875rem;
+}
+@media (max-width: 62rem) {
+  .cairn-art {
+    min-height: auto;
+    padding-bottom: 5.5rem;
+  }
+  .cairn-art__proof {
+    right: auto;
+    left: 0;
+    bottom: 0;
+  }
+}
+.cairn-art__proof-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cairn-accent-ink);
+  margin-bottom: 0.375rem;
+}
+@media (prefers-color-scheme: dark) {
+  .cairn-art__proof-label {
+    color: var(--cairn-accent);
+  }
+}
+.cairn-art__proof-quote {
+  margin: 0;
+  color: var(--cairn-ink);
+  font-style: italic;
+}
+.cairn-art__proof-source {
+  margin: 0.5rem 0 0;
+  color: var(--cairn-ink-subtle);
+  font-size: 0.8125rem;
+}
+
+/* -------------------------------- sections ------------------------------- */
+
+.cairn-landing-section {
+  padding-block: clamp(2.5rem, 6vw, 4.5rem);
+  border-top: 1px solid var(--cairn-border);
+}
+.cairn-landing-section__title {
+  font-family: var(--cairn-font-serif);
+  font-size: clamp(1.5rem, 1.2rem + 1.1vw, 2rem);
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  font-weight: 600;
+  margin: 0 0 0.625rem;
+}
+.cairn-landing-section__lede {
+  margin: 0 0 2rem;
+  color: var(--cairn-ink-muted);
+  max-width: 46rem;
+  font-size: 1.0625rem;
+}
+
+.cairn-steps {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
+  counter-reset: cairn-step;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cairn-step {
+  counter-increment: cairn-step;
+  background: var(--cairn-surface);
+  border: 1px solid var(--cairn-border);
+  border-radius: var(--cairn-radius-lg);
+  padding: 1.5rem 1.375rem 1.375rem;
+  box-shadow: var(--cairn-shadow-sm);
+}
+.cairn-step::before {
+  content: counter(cairn-step);
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: var(--cairn-accent-soft);
+  color: var(--cairn-accent-ink);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  margin-bottom: 0.875rem;
+}
+@media (prefers-color-scheme: dark) {
+  .cairn-step::before {
+    color: var(--cairn-accent);
+  }
+}
+.cairn-step__title {
+  margin: 0 0 0.375rem;
+  font-size: 1.0625rem;
+  font-weight: 650;
+}
+.cairn-step__body {
+  margin: 0;
+  color: var(--cairn-ink-muted);
+  font-size: 0.9375rem;
+}
+
+/* ------------------------------ proof panel ------------------------------ */
+
+.cairn-proof {
+  display: grid;
+  gap: clamp(1.5rem, 4vw, 3rem);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  align-items: center;
+}
+@media (max-width: 58rem) {
+  .cairn-proof {
+    grid-template-columns: 1fr;
+  }
+}
+.cairn-proof__demo {
+  background: var(--cairn-surface);
+  border: 1px solid var(--cairn-border);
+  border-radius: var(--cairn-radius-lg);
+  padding: 1.375rem;
+  box-shadow: var(--cairn-shadow);
+}
+.cairn-proof__question {
+  font-weight: 650;
+  margin: 0 0 0.875rem;
+}
+.cairn-proof__answer {
+  margin: 0 0 1rem;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+.cairn-proof__cite {
+  font-size: 0.75rem;
+  vertical-align: super;
+  color: var(--cairn-accent-ink);
+  font-weight: 700;
+}
+@media (prefers-color-scheme: dark) {
+  .cairn-proof__cite {
+    color: var(--cairn-accent);
+  }
+}
+.cairn-proof__evidence {
+  background: var(--cairn-surface-sunken);
+  border-radius: var(--cairn-radius);
+  padding: 0.875rem 1rem;
+  font-size: 0.875rem;
+}
+.cairn-proof__evidence p {
+  margin: 0.375rem 0 0;
+  color: var(--cairn-ink-muted);
+  font-style: italic;
+}
+
+/* -------------------------------- pillars -------------------------------- */
+
+.cairn-pillars {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cairn-pillar__title {
+  margin: 0 0 0.375rem;
+  font-weight: 650;
+  font-size: 1rem;
+}
+.cairn-pillar__body {
+  margin: 0;
+  color: var(--cairn-ink-muted);
+  font-size: 0.9375rem;
+}
+
+.cairn-landing-footer {
+  border-top: 1px solid var(--cairn-border);
+  padding-block: 1.75rem 2.5rem;
+  color: var(--cairn-ink-subtle);
+  font-size: 0.875rem;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}

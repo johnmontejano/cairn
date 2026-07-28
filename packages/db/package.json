@@ -1,0 +1,26 @@
+{
+  "name": "@cairn/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema.ts",
+    "./migrate": "./src/migrate.ts"
+  },
+  "dependencies": {
+    "@cairn/config": "workspace:*",
+    "@cairn/crypto": "workspace:*",
+    "@cairn/domain": "workspace:*",
+    "@electric-sql/pglite": "0.4.6",
+    "drizzle-orm": "0.45.2",
+    "postgres": "3.4.9"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.9",
+    "drizzle-kit": "0.31.10",
+    "typescript": "5.9.3"
+  }
+}
