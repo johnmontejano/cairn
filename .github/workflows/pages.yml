@@ -1,0 +1,63 @@
+name: Project page
+
+# Publishes site/dist to GitHub Pages.
+#
+# This deploys the project page only — a static shop window. It is NOT the
+# application: Cairn needs PostgreSQL, sessions, and a server, none of which
+# GitHub Pages provides. See docs/DEPLOYMENT.md for hosting the real thing.
+
+on:
+  push:
+    branches: [main]
+    # Only rebuild when something the page is actually made of changes.
+    paths:
+      - 'site/**'
+      - 'packages/ui/src/tokens.css'
+      - 'packages/ui/src/styles.css'
+      - 'apps/web/src/app/globals.css'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never cancel a running deploy; queue behind it instead.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build the page
+        run: node site/build.mjs
+      - name: Check the build produced what we expect
+        run: |
+          test -s site/dist/index.html
+          test -s site/dist/styles.css
+          # The stylesheet is concatenated from the app's own CSS. If the token
+          # block ever stops arriving, the page renders unstyled, so fail here
+          # rather than publishing that.
+          grep -q -- '--cairn-accent:' site/dist/styles.css
+          grep -q 'cairn-display' site/dist/styles.css
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

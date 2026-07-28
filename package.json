@@ -28,7 +28,8 @@
     "test:e2e:install": "playwright install chromium",
     "build": "pnpm --filter @cairn/web build",
     "verify": "node scripts/verify.mjs",
-    "mcp:stdio": "node --import tsx packages/mcp/src/bin/stdio.ts"
+    "mcp:stdio": "node --import tsx packages/mcp/src/bin/stdio.ts",
+    "site:build": "node site/build.mjs"
   },
   "devDependencies": {
     "@cairn/config": "workspace:*",
