@@ -12,4 +12,4 @@ backups
 
 # Generated, not authored
 next-env.d.ts
-.impeccable
+.impeccable/hook.cache.json
