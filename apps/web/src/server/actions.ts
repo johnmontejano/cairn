@@ -609,8 +609,10 @@ export async function connectSource(
     await assertCsrf(formData);
     const context = await requireContext();
     const project = await resolveProject(context, String(formData.get('projectId') ?? ''));
-    const provider = String(formData.get('provider') ?? '') as 'google_drive' | 'github';
-    if (!['google_drive', 'github'].includes(provider)) return { error: 'Unknown connection.' };
+    const provider = String(formData.get('provider') ?? '') as 'google_drive' | 'github' | 'notion';
+    if (!['google_drive', 'github', 'notion'].includes(provider)) {
+      return { error: 'Unknown connection.' };
+    }
 
     const connector = createConnector(provider, context.services.config);
     const status = connector?.status() ?? 'setup-required';
@@ -624,7 +626,14 @@ export async function connectSource(
         displayName: connector?.displayName ?? provider,
         // An unconfigured provider is recorded honestly rather than pretending.
         state: status === 'ready' ? 'active' : 'setup_required',
-        scopes: provider === 'google_drive' ? ['drive.readonly'] : ['contents:read'],
+        scopes:
+          provider === 'google_drive'
+            ? ['drive.readonly']
+            : provider === 'notion'
+              ? // Notion has no scope strings; access is whatever the person
+                // shares with the integration, so this records intent only.
+                ['pages:read']
+              : ['contents:read'],
         externalAccountLabel: status === 'ready' ? null : 'Demo data',
       });
       await auditRepo.recordAudit(tx, {

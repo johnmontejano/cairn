@@ -211,7 +211,14 @@ export interface MemoryConflict {
  * Sources
  * ------------------------------------------------------------------ */
 
-export const sourceProviders = ['paste', 'upload', 'url', 'google_drive', 'github'] as const;
+export const sourceProviders = [
+  'paste',
+  'upload',
+  'url',
+  'google_drive',
+  'github',
+  'notion',
+] as const;
 export type SourceProvider = (typeof sourceProviders)[number];
 
 export const connectionStates = [

@@ -131,6 +131,10 @@ const envSchema = z.object({
   GITHUB_CLIENT_SECRET: optionalStr,
   GITHUB_REDIRECT_URI: optionalStr,
 
+  NOTION_CLIENT_ID: optionalStr,
+  NOTION_CLIENT_SECRET: optionalStr,
+  NOTION_REDIRECT_URI: optionalStr,
+
   MCP_AUTH_MODE: z.enum(['local', 'oauth']).default('local'),
   /** Development-only bearer token for the local MCP endpoint. */
   CAIRN_MCP_LOCAL_TOKEN: optionalStr,
@@ -181,6 +185,7 @@ export interface AppConfig {
     readonly queue: ProviderStatus;
     readonly googleDrive: ProviderStatus;
     readonly github: ProviderStatus;
+    readonly notion: ProviderStatus;
     readonly mcpAuth: ProviderStatus;
     readonly observability: ProviderStatus;
   };
@@ -248,6 +253,11 @@ export function buildConfig(source: NodeJS.ProcessEnv = process.env): AppConfig 
     GITHUB_APP_ID: env.GITHUB_APP_ID,
     GITHUB_APP_PRIVATE_KEY: env.GITHUB_APP_PRIVATE_KEY,
     GITHUB_WEBHOOK_SECRET: env.GITHUB_WEBHOOK_SECRET,
+  });
+  const notionMissing = require_({
+    NOTION_CLIENT_ID: env.NOTION_CLIENT_ID,
+    NOTION_CLIENT_SECRET: env.NOTION_CLIENT_SECRET,
+    NOTION_REDIRECT_URI: env.NOTION_REDIRECT_URI,
   });
   const supabaseMissing = require_({
     SUPABASE_URL: env.SUPABASE_URL,
@@ -348,6 +358,12 @@ export function buildConfig(source: NodeJS.ProcessEnv = process.env): AppConfig 
         githubMissing,
         'GitHub App, read-only (optional mirror)',
         'GitHub needs setup before it can be connected.',
+      ),
+      notion: status(
+        notionMissing.length === 0,
+        notionMissing,
+        'Notion, read-only (shared pages only)',
+        'Notion needs setup before it can be connected.',
       ),
       mcpAuth:
         env.MCP_AUTH_MODE === 'oauth'

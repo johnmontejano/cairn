@@ -2,13 +2,16 @@ import { getConfig } from '@cairn/config';
 import type { SourceConnector, SourceProvider } from '@cairn/domain';
 import { createGoogleDriveConnector } from './googleDrive';
 import { createGitHubConnector } from './github';
+import { createNotionConnector } from './notion';
 
 export * from './url';
 export * from './googleDrive';
 export * from './github';
+export * from './notion';
 export * from './fixtures/sample';
 export { DRIVE_FIXTURE_FILES } from './fixtures/googleDrive';
 export { GITHUB_FIXTURE_FILES } from './fixtures/github';
+export { NOTION_FIXTURE_PAGES } from './fixtures/notion';
 
 /**
  * What the user is told before connecting anything.
@@ -80,6 +83,17 @@ export const CONNECTOR_DESCRIPTIONS: Record<SourceProvider, ConnectorDescription
     readOnly: true,
     needsAccount: true,
   },
+  notion: {
+    provider: 'notion',
+    displayName: 'Notion',
+    summary: 'Keep memory up to date from the Notion pages you already write in.',
+    permissionSummary:
+      'Reads only the Notion pages you choose to share with this connection. It cannot see anything you have not shared, and it never edits, moves, or deletes anything in Notion.',
+    disconnectSummary:
+      'Disconnecting stops future reading and deletes the stored permission immediately. Memory already saved stays until you remove it.',
+    readOnly: true,
+    needsAccount: true,
+  },
 };
 
 export function connectorStatus(
@@ -95,6 +109,8 @@ export function connectorStatus(
       return config.providers.googleDrive.state;
     case 'github':
       return config.providers.github.state;
+    case 'notion':
+      return config.providers.notion.state;
   }
 }
 
@@ -104,6 +120,7 @@ export function createConnector(
 ): SourceConnector | null {
   if (provider === 'google_drive') return createGoogleDriveConnector(config);
   if (provider === 'github') return createGitHubConnector(config);
+  if (provider === 'notion') return createNotionConnector(config);
   // Paste, upload and URL arrive as a direct request rather than by polling a
   // provider, so they have no lister.
   return null;
