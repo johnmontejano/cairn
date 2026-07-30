@@ -8,6 +8,10 @@ coverage/
 .turbo/
 
 # Local runtime state (never commit)
+# Per-machine Codex config. Keep MCP servers in ~/.codex/config.toml only:
+# a project-local server with the same name as a global one merges key-by-key
+# and produces an invalid entry (e.g. `command` + `url` on one stdio server).
+.codex/
 .env
 .env.local
 .env.*.local

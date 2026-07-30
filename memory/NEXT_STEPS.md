@@ -42,7 +42,14 @@ credential from the user; none of it should be done without explicit approval.
 
 ## Immediate
 
-1. **Set up WorkOS AuthKit** and switch `AUTH_PROVIDER` from `fixture` to
+1. **Rotate the Supabase personal access token** that was stored in plaintext in
+   the now-deleted `.codex/config.toml` (prefix `sbp_4f25…`). A PAT carries
+   management-API access to every project in the account, so this is a wider
+   exposure than the database password. Revoke it at
+   <https://supabase.com/dashboard/account/tokens> and issue a replacement only
+   if something still needs one — nothing in the current config does. This is
+   distinct from the database password whose rotation was declined on 2026-07-29.
+2. **Set up WorkOS AuthKit** and switch `AUTH_PROVIDER` from `fixture` to
    `workos`. Redirect URI:
    `https://cairn-web-beta.vercel.app/api/oauth/workos/callback`. Until this is
    done the landing page shows demo-mode copy that is untrue of a hosted

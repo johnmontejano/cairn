@@ -44,7 +44,7 @@ const PILLARS = [
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ deleted?: string }>;
+  searchParams: Promise<{ deleted?: string; error?: string }>;
 }) {
   if (await hasSession()) redirect('/home');
   const services = await getServices();
@@ -67,6 +67,17 @@ export default async function SignInPage({
               <Callout tone="good" title="Everything was deleted">
                 Your memory, documents, connections and keys have been removed. Anything you
                 exported yourself is unaffected.
+              </Callout>
+            </div>
+          ) : null}
+
+          {/* Hosted sign-in returns here on refusal or an expired code. Without
+              this the person lands on an ordinary sign-in page with no idea why
+              the round trip failed. */}
+          {params.error ? (
+            <div style={{ paddingTop: '1.5rem' }}>
+              <Callout tone="warn" title="Sign-in did not finish" live="polite">
+                {params.error}
               </Callout>
             </div>
           ) : null}

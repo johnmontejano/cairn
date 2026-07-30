@@ -1,6 +1,6 @@
 # Current State
 
-Last updated: 2026-07-28
+Last updated: 2026-07-30
 
 ## Summary
 
@@ -140,6 +140,27 @@ Two failures were diagnosed and fixed along the way, both worth remembering:
 Also learned: Vercel's env var list sorts by last-updated, so a just-edited
 variable jumps to the top of the list rather than staying in place — which
 briefly looked like it had been deleted.
+
+## Agent tooling: Codex MCP config collision (2026-07-30)
+
+Codex refused to start any task in this project with
+`invalid configuration: url is not supported for stdio in mcp_servers.supabase`.
+
+Cause: an untracked project-local `.codex/config.toml` defined
+`mcp_servers.supabase` as a stdio server (`command`/`args`), while
+`~/.codex/config.toml` already defines a server of the same name with `url`.
+Codex merges project config over global config **key by key, not per server**, so
+the merged entry carried both `command` and `url`, which is invalid for either
+transport. This is why the error appeared only in this folder.
+
+Fixed by deleting the redundant project-local file — the global hosted Supabase
+server was already sufficient — and adding `.codex/` to `.gitignore` so a
+per-machine override can never be committed or collide again. The global config
+was then re-parsed and verified: six MCP servers, no duplicate names, no entry
+carrying both `command` and `url`.
+
+The deleted file also contained a **plaintext Supabase personal access token**
+(`sbp_…`). It was never committed. See `NEXT_STEPS.md`.
 
 ## Not done
 
