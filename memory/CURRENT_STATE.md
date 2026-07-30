@@ -60,10 +60,105 @@ Confirmed working end to end, locally:
   queue itself, through the same handlers; the separate worker requires
   `DATABASE_URL`.
 
+## Cloud provisioning (2026-07-28)
+
+The Supabase half of the first deployment is done and verified. The website is
+still not deployed.
+
+Project `Ai-Memory` (`ipzzmjipfmshhxcurtwe`, us-east-1) was reused rather than
+creating a new one; it already existed and was empty. It carries two unrelated
+tables, `memories` and `memory_events`, from an earlier unfinished attempt. Both
+are empty and Cairn does not touch them.
+
+Verified against the live project:
+
+- `vector` 0.8.2 installed.
+- Migrations `0001`–`0004` applied, with matching checksums recorded in
+  `schema_migrations`, so a later `pnpm db:migrate` is a no-op rather than a
+  re-run.
+- Row-level security on 33 of 34 public tables; 27 policies target `cairn_app`
+  (26 tenant tables plus `users_self`). The one table without RLS was
+  `schema_migrations`, which `0004` then closed.
+- Private storage bucket `cairn-raw-sources` exists and is not public.
+- Supabase's security advisor reports **zero errors**.
+
+`0004_harden_search_path.sql` was written during this work, in response to
+advisor findings that only appear on a hosted project: `schema_migrations` was
+exposed through PostgREST without RLS, and three Cairn functions had a mutable
+`search_path`. `pnpm verify` passes with it against local PGlite as well.
+
+One advisor warning is left deliberately: `vector` is installed in the `public`
+schema. Moving it would mean rewriting the already-applied, checksummed
+`0001_init`, and every `vector(1536)` column type resolves through it. The
+tradeoff is recorded here rather than silently accepted.
+
+## Setup made shorter (2026-07-28)
+
+Two additions aimed at the project's stated goal that setup be doable without
+technical expertise. Neither needs credentials, so both were done rather than
+handed over:
+
+- **`pnpm preflight`** (`scripts/preflight.mts`) reports every provider as ready,
+  optional, or missing, in plain language, and names the exact variable behind
+  each failure. It reuses the `ProviderStatus` the app already computes, so it
+  cannot drift from what the running process believes. It also catches the three
+  silent killers of a cloud deploy that nothing else reports: a `cloud` mode
+  still pointing at the in-process database, a missing worker with
+  `CAIRN_INLINE_JOBS` unset, and an `http://` app URL that breaks Secure cookies.
+  Verified against a deliberately broken config; it flags all four faults and
+  exits non-zero.
+- **A Vercel deploy button** in `README.md` that presets the root directory and
+  build commands and then prompts for each variable in turn, reducing the Vercel
+  half to a click plus paste. `docs/DEPLOYMENT.md` now names the only three
+  values that cannot be copied verbatim, and where each one lives.
+
+Note: the script is `preflight`, not `doctor` — `pnpm doctor` is a built-in pnpm
+command and silently shadows a script of that name.
+
+## Deployed and live (2026-07-28)
+
+The website is live at <https://cairn-web-beta.vercel.app> on Vercel Hobby,
+project `cairn-web`, root directory `apps/web`, no worker deployed.
+
+`GET /api/health` returns **200 with every check green**: mode `cloud`, database
+PostgreSQL, postgres queue reachable, jobs "drained by the web process"
+(confirming `CAIRN_INLINE_JOBS=always` works as intended), Supabase Storage
+bucket `cairn-raw-sources`, versioned Markdown vault, MCP local authorization,
+built-in extractor.
+
+Two failures were diagnosed and fixed along the way, both worth remembering:
+
+1. **`TypeError: Invalid URL` on every request, empty-bodied 500.** The Supabase
+   connection string had been pasted with its `[YOUR-PASSWORD]` placeholder still
+   in it; the square brackets make the URL unparseable. The empty body is the
+   tell — `getServices()` is called at `api/health/route.ts:19`, outside the
+   per-check try/catch, so a connection failure kills the route before it can
+   report anything. A genuine database outage returns a readable 503 instead.
+2. **The deploy domain was `cairn-web-beta.vercel.app`, not `cairn-web`.**
+   `CAIRN_APP_URL` had been set to the guessed name and was corrected.
+
+Also learned: Vercel's env var list sorts by last-updated, so a just-edited
+variable jumps to the top of the list rather than staying in place — which
+briefly looked like it had been deleted.
+
 ## Not done
 
-- Nothing has been deployed. No repository, commit, push, cloud resource, or
-  external account was created.
+- **Sign-in is still `AUTH_PROVIDER=fixture`**, deliberately, so the stack could
+  be proven before adding WorkOS. Codes are written to the Vercel log rather than
+  emailed, so only the account owner can sign in. A visible consequence: the
+  landing page still shows demo-mode copy — a "Running on this computer" badge
+  and "this copy runs entirely on this machine" — which is wrong for a hosted
+  deployment and disappears when WorkOS is configured.
+- WorkOS AuthKit is not set up. The redirect URI it needs is
+  `https://cairn-web-beta.vercel.app/api/oauth/workos/callback`.
+- **The database password is knowingly unrotated.** It was pasted into a chat
+  transcript during setup, so it exists outside the secret manager. The user was
+  told and chose on 2026-07-29 not to rotate it. Recorded as an accepted risk
+  rather than an open task. It should be rotated before anyone else's data is
+  stored, and rotating it is one reset in Supabase plus one `DATABASE_URL` update
+  in Vercel.
+- No commit or push has been made. Migration `0004`, `scripts/preflight.mts`, the
+  README deploy button, and the `docs/DEPLOYMENT.md` updates are all uncommitted.
 - Scheduled backups, data-key rotation, Supabase Queues (pgmq), retention
   enforcement, team invitations, scanned-PDF text recognition, and an
   OpenTelemetry exporter are not implemented. Interfaces exist where relevant.

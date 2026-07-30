@@ -28,17 +28,29 @@ credential from the user; none of it should be done without explicit approval.
    at scale.
 3. **Connect one AI tool locally** over the stdio server, following
    `docs/MCP_GUIDE.md`. No hosting required and it proves the whole promise.
-4. **Provision Supabase** (database plus a private storage bucket) and run
-   `pnpm db:migrate`. Confirm row-level security with the queries in
-   `docs/DEPLOYMENT.md`. This is the first step that creates a cloud resource and
-   needs explicit approval.
+4. ~~**Provision Supabase.**~~ Done on 2026-07-28 and verified. See
+   `CURRENT_STATE.md`.
 5. **Connect one source connector.** Google Drive is the recommended first, per
    the product plan. GitHub is equally ready if the first users are technical.
-6. **Deploy the website and worker** (Vercel plus Railway), then work through the
-   pre-launch checklist in `docs/DEPLOYMENT.md`.
+   Both need OAuth credentials the user must create.
+6. ~~**Deploy the website.**~~ Done on 2026-07-28. Live at
+   <https://cairn-web-beta.vercel.app> with `/api/health` green. See
+   `CURRENT_STATE.md`.
 7. **Enable remote MCP OAuth.** Last, because it is the one path never exercised
-   against a live issuer. Verify current official guidance first; connection
-   codes remain the tested alternative.
+   against a live issuer. Verify current official guidance first; connection codes
+   remain the tested alternative.
+
+## Immediate
+
+1. **Set up WorkOS AuthKit** and switch `AUTH_PROVIDER` from `fixture` to
+   `workos`. Redirect URI:
+   `https://cairn-web-beta.vercel.app/api/oauth/workos/callback`. Until this is
+   done the landing page shows demo-mode copy that is untrue of a hosted
+   deployment, and sign-in codes go to the Vercel log rather than to email.
+
+Rotating the database password was offered and declined on 2026-07-29; see the
+accepted risk in `CURRENT_STATE.md`. Do not re-raise it as a task, but do rotate
+before storing anyone else's data.
 
 ## Before anyone else's data goes in
 

@@ -26,6 +26,24 @@ says so.
 Requires Node 20.9+ and pnpm 9. The local database is a real PostgreSQL build
 (PGlite) that runs in-process — no Docker, no server to install.
 
+## Put it online
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fjohnmontejano%2Fcairn&root-directory=apps%2Fweb&project-name=cairn&env=DATABASE_URL,CAIRN_MASTER_KEY,CAIRN_SESSION_SECRET,CAIRN_APP_URL,CAIRN_MODE,CAIRN_INLINE_JOBS,AUTH_PROVIDER,WORKOS_API_KEY,WORKOS_CLIENT_ID,WORKOS_REDIRECT_URI,AI_PROVIDER,STORAGE_PROVIDER,SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY,SUPABASE_STORAGE_BUCKET&envDescription=Cairn%20asks%20for%20these%20once.%20The%20deployment%20guide%20says%20where%20each%20one%20comes%20from%20and%20which%20are%20safe%20to%20copy%20verbatim.&envLink=https%3A%2F%2Fgithub.com%2Fjohnmontejano%2Fcairn%2Fblob%2Fmain%2Fdocs%2FDEPLOYMENT.md)
+
+The button sets the root directory and build commands for you and then asks for
+each variable in turn. [The deployment guide](docs/DEPLOYMENT.md) lists which
+ones can be copied verbatim and which three you have to fetch yourself.
+
+Before and after deploying, this reports what is configured and what is missing,
+in plain language:
+
+```bash
+pnpm preflight
+```
+
+It names the exact variable behind every failure, so a deployment that builds but
+does not work tells you why instead of leaving you guessing.
+
 ## What it does
 
 1. You add something: paste a note, upload a document, or read a web page.

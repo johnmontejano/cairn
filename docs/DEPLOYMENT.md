@@ -1,11 +1,18 @@
 # Deployment
 
-Nothing here has been deployed. This is the procedure, written so it can be
-followed without guessing — and so the cost and the trust boundaries are visible
-before anyone commits to them.
+This is the procedure, written so it can be followed without guessing — and so
+the cost and the trust boundaries are visible before anyone commits to them.
 
 Target: Supabase (database, storage, queue), Vercel (website), Railway (worker),
 WorkOS (sign-in). See [cost controls](COST_CONTROLS.md) for what that costs.
+
+> **Status, 2026-07-28.** Steps 1 and 2 are done against Supabase project
+> `Ai-Memory` and verified: `vector` installed, migrations `0001`–`0004` applied
+> with checksums recorded, row-level security confirmed, private
+> `cairn-raw-sources` bucket created, and Supabase's security advisor reporting
+> zero errors. Steps 4 onward — WorkOS and the website — have not been done,
+> because they need account sign-in and secret entry. `memory/CURRENT_STATE.md`
+> holds the detail.
 
 ## Running it for nothing
 
@@ -137,8 +144,23 @@ CAIRN_SESSION_SECRET=…   # at least 32 random characters
 
 ## 5. Website — Vercel
 
-Import the repository. Root directory `apps/web`, build `pnpm build`, install
-`pnpm install`.
+The [deploy button in the README](../README.md#put-it-online) sets the root
+directory and build commands and then prompts for each variable, which is the
+shortest path. To do it by hand instead: import the repository, root directory
+`apps/web`, build `pnpm build`, install `pnpm install`.
+
+Only three values cannot be copied verbatim from this guide:
+
+| Variable                                | Where it comes from                                                                                                                                           |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                          | Project Settings → Database → Connection string → URI. Tick **Use connection pooling**: Vercel is serverless and the direct connection will exhaust its pool. |
+| `SUPABASE_SERVICE_ROLE_KEY`             | Project Settings → API Keys → `service_role`. It bypasses row-level security, so it is server-side only.                                                      |
+| `WORKOS_API_KEY` and `WORKOS_CLIENT_ID` | The AuthKit environment created in step 4.                                                                                                                    |
+
+After the first deploy, run `pnpm preflight` against the same environment. It
+reports every provider as ready, optional, or missing, and names the exact
+variable behind each failure — the difference between "it doesn't work" and a
+list of things to fix.
 
 Set every variable from [the environment reference](ENVIRONMENT.md) as a
 **server-side** variable. None of them is prefixed `NEXT_PUBLIC_`; if a tool

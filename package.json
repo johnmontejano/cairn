@@ -9,6 +9,7 @@
   },
   "scripts": {
     "setup": "node scripts/setup.mjs",
+    "preflight": "node --import tsx scripts/preflight.mts",
     "dev": "pnpm --filter @cairn/web dev",
     "dev:worker": "pnpm --filter @cairn/worker dev",
     "dev:all": "node scripts/dev-all.mjs",

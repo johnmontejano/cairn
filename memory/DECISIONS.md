@@ -82,3 +82,14 @@ Claude Code to implement the full MVP through internal phases.
 without requiring a new prompt for each one. Consequential external actions,
 including cloud-resource creation and deployment, still require explicit user
 approval.
+
+## 2026-07-28 — Host the first deployment on the existing Supabase project
+
+**Decision:** Run Cairn's database and object storage on the pre-existing
+Supabase project `Ai-Memory` (`ipzzmjipfmshhxcurtwe`, us-east-1) rather than
+creating a new one, and deploy the website to Vercel Hobby with
+`CAIRN_INLINE_JOBS=always` so no separate worker is required.
+
+**Reasoning:** The project already existed and was empty, so reusing it creates
+no new infrastructure and keeps the single-user deployment at $0. Approved by the
+user on 2026-07-28 after the cost was confirmed at $0/month.
