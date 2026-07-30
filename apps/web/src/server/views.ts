@@ -261,7 +261,7 @@ export async function loadSources(context: RequestContext): Promise<SourcesView>
       connections,
       items,
       jobs,
-      available: (['google_drive', 'github'] as const).map((provider) => ({
+      available: (['google_drive', 'notion', 'github'] as const).map((provider) => ({
         provider,
         status: connectorStatus(provider, context.services.config),
         description: CONNECTOR_DESCRIPTIONS[provider],
