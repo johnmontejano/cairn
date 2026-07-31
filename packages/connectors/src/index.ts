@@ -8,6 +8,7 @@ export * from './url';
 export * from './googleDrive';
 export * from './github';
 export * from './notion';
+export * from './pipedream';
 export * from './fixtures/sample';
 export { DRIVE_FIXTURE_FILES } from './fixtures/googleDrive';
 export { GITHUB_FIXTURE_FILES } from './fixtures/github';

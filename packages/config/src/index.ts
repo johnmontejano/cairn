@@ -135,6 +135,16 @@ const envSchema = z.object({
   NOTION_CLIENT_SECRET: optionalStr,
   NOTION_REDIRECT_URI: optionalStr,
 
+  /**
+   * Pipedream Connect. One project serves every workspace; users are separated
+   * by the external-user id sent per request, so there is nothing per-tenant to
+   * configure here.
+   */
+  PIPEDREAM_PROJECT_ID: optionalStr,
+  PIPEDREAM_ENVIRONMENT: z.enum(['development', 'production']).default('development'),
+  PIPEDREAM_CLIENT_ID: optionalStr,
+  PIPEDREAM_CLIENT_SECRET: optionalStr,
+
   MCP_AUTH_MODE: z.enum(['local', 'oauth']).default('local'),
   /** Development-only bearer token for the local MCP endpoint. */
   CAIRN_MCP_LOCAL_TOKEN: optionalStr,
@@ -186,6 +196,7 @@ export interface AppConfig {
     readonly googleDrive: ProviderStatus;
     readonly github: ProviderStatus;
     readonly notion: ProviderStatus;
+    readonly pipedream: ProviderStatus;
     readonly mcpAuth: ProviderStatus;
     readonly observability: ProviderStatus;
   };
@@ -258,6 +269,11 @@ export function buildConfig(source: NodeJS.ProcessEnv = process.env): AppConfig 
     NOTION_CLIENT_ID: env.NOTION_CLIENT_ID,
     NOTION_CLIENT_SECRET: env.NOTION_CLIENT_SECRET,
     NOTION_REDIRECT_URI: env.NOTION_REDIRECT_URI,
+  });
+  const pipedreamMissing = require_({
+    PIPEDREAM_PROJECT_ID: env.PIPEDREAM_PROJECT_ID,
+    PIPEDREAM_CLIENT_ID: env.PIPEDREAM_CLIENT_ID,
+    PIPEDREAM_CLIENT_SECRET: env.PIPEDREAM_CLIENT_SECRET,
   });
   const supabaseMissing = require_({
     SUPABASE_URL: env.SUPABASE_URL,
@@ -364,6 +380,12 @@ export function buildConfig(source: NodeJS.ProcessEnv = process.env): AppConfig 
         notionMissing,
         'Notion, read-only (shared pages only)',
         'Notion needs setup before it can be connected.',
+      ),
+      pipedream: status(
+        pipedreamMissing.length === 0,
+        pipedreamMissing,
+        'Pipedream Connect, read-only (one project, scoped per user)',
+        'Pipedream needs setup before its apps can be connected.',
       ),
       mcpAuth:
         env.MCP_AUTH_MODE === 'oauth'
