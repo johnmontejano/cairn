@@ -42,6 +42,13 @@ credential from the user; none of it should be done without explicit approval.
 
 ## Immediate
 
+0. **Create a Pipedream OAuth client** and set `PIPEDREAM_CLIENT_ID` and
+   `PIPEDREAM_CLIENT_SECRET` in Vercel. This unblocks the whole connector queue:
+   Gmail, Drive, GitHub and Calendar all sit on the Pipedream layer, and the
+   layer cannot make a single live call without it. Two things then get
+   finished with one real request — confirming `TOKEN_ENDPOINT` (currently the
+   conventional OAuth2 URL, unverified because their docs were down) and mapping
+   each app's discovered tools onto `FetchedSource`.
 1. **Rotate the Supabase personal access token** that was stored in plaintext in
    the now-deleted `.codex/config.toml` (prefix `sbp_4f25…`). A PAT carries
    management-API access to every project in the account, so this is a wider

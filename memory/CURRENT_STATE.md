@@ -162,6 +162,42 @@ carrying both `command` and `url`.
 The deleted file also contained a **plaintext Supabase personal access token**
 (`sbp_…`). It was never committed. See `NEXT_STEPS.md`.
 
+## Pipedream connector layer (2026-07-31)
+
+On branch `pipedream-connectors`, commit `45e638a`. Not merged to `main`.
+
+Rationale: every hand-written connector costs an OAuth dance plus a bespoke
+list-and-fetch. Notion took ~250 lines that way. Pipedream Connect hosts both
+halves for ~3,000 apps behind one contract, so an app becomes a slug rather than
+a file. This is the difference between a 3-connector product and a 27-connector
+one, and it is why Unabyss reaches 27 — their Google Drive and Calendar connect
+links point at `pipedream.com/_static/connect.html`, not their own domain.
+
+What the layer does: JSON-RPC over HTTP against
+`https://remote.mcp.pipedream.net/v3`, with `x-pd-project-id`,
+`x-pd-environment`, `x-pd-external-user-id` and `x-pd-app-slug`. One project
+serves every workspace; users are separated by the external-user id, so there is
+nothing per-tenant to provision. Transport is plain fetch rather than the MCP
+SDK, matching the reasoning already applied to WorkOS.
+
+Cairn never holds provider credentials. Linking goes through a Connect Link the
+person opens themselves, so Gmail and Drive tokens live at Pipedream.
+
+Two things are deliberately unfinished rather than guessed:
+
+1. `TOKEN_ENDPOINT` is **unverified**. `pipedream.com/docs` returned 502 on every
+   path while this was written, so the constant holds the conventional OAuth2
+   client-credentials URL. It is isolated in one place so correcting it is a
+   one-line change once a real call can be made.
+2. `PipedreamConnector.list()` throws setup-required instead of mapping tools.
+   Discovery through `tools/list` is implemented and works; binding each app's
+   list-and-fetch to `FetchedSource` needs one live credential to verify
+   against. An unexecuted mapping would be faked success.
+
+Blocked on `PIPEDREAM_CLIENT_ID` and `PIPEDREAM_CLIENT_SECRET`.
+`PIPEDREAM_PROJECT_ID=proj_OesEKRE` and `PIPEDREAM_ENVIRONMENT=development` are
+already set in Vercel.
+
 ## Not done
 
 - **Sign-in is still `AUTH_PROVIDER=fixture`**, deliberately, so the stack could
