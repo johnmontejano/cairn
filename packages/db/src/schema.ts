@@ -504,6 +504,10 @@ export const workspaceSettings = pgTable('workspace_settings', {
   aiHardLimitEnabled: boolean('ai_hard_limit_enabled').notNull().default(true),
   privacyMode: boolean('privacy_mode').notNull().default(false),
   retentionDaysRaw: integer('retention_days_raw').notNull().default(365),
+  // Null means the summary is still derived from memory; a value means the
+  // person replaced it and derivation stops. See migration 0005.
+  identityMarkdown: text('identity_markdown'),
+  identityUpdatedAt: timestamp('identity_updated_at', { withTimezone: true }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

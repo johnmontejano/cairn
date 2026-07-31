@@ -14,7 +14,12 @@ import {
   requireScope,
 } from '@cairn/domain';
 import type { CairnServices } from '@cairn/ingestion';
-import { getDisclosableMemoryItem, searchMemory } from '@cairn/search';
+import {
+  assembleIdentity,
+  getDisclosableMemoryItem,
+  missingIdentitySections,
+  searchMemory,
+} from '@cairn/search';
 import { PostgresMemoryVault } from '@cairn/vault';
 
 /**
@@ -239,6 +244,76 @@ function registerTools(server: McpServer, context: McpContext): void {
       );
     },
   );
+
+  server.registerTool(
+    'whoami',
+    {
+      title: 'Who this person is',
+      description:
+        'A short summary of this person — what they work on, how they work, and what they have decided. Read this at the start of a session, before searching for anything specific.',
+      inputSchema: {},
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async () => {
+      requireScope(context.actor, 'memory:read');
+      const crypto = await context.services.keyring.get(context.actor.workspaceId);
+
+      const { markdown, present, truncated, edited } = await withTenant(
+        context.services.handle,
+        context.actor,
+        async (tx) => {
+          const [settings] = await tx
+            .select()
+            .from(schema.workspaceSettings)
+            .where(eq(schema.workspaceSettings.workspaceId, context.actor.workspaceId))
+            .limit(1);
+
+          // A summary the person wrote themselves wins. Regenerating over an
+          // edit would make their correction look lost.
+          if (settings?.identityMarkdown) {
+            return {
+              markdown: settings.identityMarkdown,
+              present: [],
+              truncated: false,
+              edited: true,
+            };
+          }
+
+          const items = await memoryRepo.listMemoryItems(tx, crypto, {
+            workspaceId: context.actor.workspaceId,
+            statuses: ['approved'],
+            limit: 200,
+          });
+          return { ...assembleIdentity(items), edited: false };
+        },
+      );
+
+      await audit(context, 'mcp.retrieved', { tool: 'whoami', edited, truncated });
+
+      if (markdown.length === 0) {
+        return toolResult(
+          { markdown: '', edited: false, missing: missingIdentitySections([]) },
+          'Nothing is saved about this person yet, so there is no summary to give. Anything they keep will start filling it in.',
+        );
+      }
+
+      const missing = edited ? [] : missingIdentitySections(present);
+      return toolResult({ markdown, edited, truncated, missing }, markdown);
+    },
+  );
+
+  // There is deliberately no `update_identity` tool here.
+  //
+  // Replacing the summary is a write, and `memory:write` sits in
+  // RESERVED_MCP_SCOPES precisely so it can never be granted: nothing reachable
+  // over MCP changes what a person has saved without them reviewing it. Adding
+  // a tool that overwrites the summary would be the first exception to that,
+  // and it would be an exception no one asked for — the identity summary is
+  // what a person sees when they ask what this thing knows about them.
+  //
+  // Editing belongs on the Settings page, behind their own sign-in, where the
+  // `identity_markdown` column added in migration 0005 is already waiting for
+  // it. See memory/NEXT_STEPS.md.
 
   server.registerTool(
     'list_recent_changes',

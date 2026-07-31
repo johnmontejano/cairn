@@ -123,6 +123,9 @@ describe('the MCP server as a client sees it', () => {
       'list_recent_changes',
       'propose_memory_update',
       'search_memory',
+      // Read-only: it reports the summary, and replacing it is deliberately not
+      // reachable from here. See the note where update_identity would have been.
+      'whoami',
     ]);
 
     const search = tools.find((t) => t.name === 'search_memory')!;
