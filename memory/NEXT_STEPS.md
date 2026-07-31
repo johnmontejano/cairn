@@ -42,6 +42,12 @@ credential from the user; none of it should be done without explicit approval.
 
 ## Immediate
 
+0a. **Add an identity editor to Settings.** Migration `0005` created the
+`identity_markdown` column and `whoami` already prefers it over the derived
+summary, so this is a form and a server action, not a design problem. It is
+the deliberate replacement for an `update_identity` MCP tool: editing happens
+behind the person's own sign-in rather than from a connected assistant.
+
 0. **Create a Pipedream OAuth client** and set `PIPEDREAM_CLIENT_ID` and
    `PIPEDREAM_CLIENT_SECRET` in Vercel. This unblocks the whole connector queue:
    Gmail, Drive, GitHub and Calendar all sit on the Pipedream layer, and the

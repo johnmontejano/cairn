@@ -198,6 +198,31 @@ Blocked on `PIPEDREAM_CLIENT_ID` and `PIPEDREAM_CLIENT_SECRET`.
 `PIPEDREAM_PROJECT_ID=proj_OesEKRE` and `PIPEDREAM_ENVIRONMENT=development` are
 already set in Vercel.
 
+## Identity summary (2026-07-31)
+
+On branch `pipedream-connectors`, commit `3ed8eb3`. Not merged to `main`.
+
+Migration `0005_identity.sql` adds `identity_markdown` and `identity_updated_at`
+to `workspace_settings`. `assembleIdentity()` in `packages/search/src/identity.ts`
+builds a summary from approved memory in a fixed order, capped at 2000 chars,
+with `<!-- cairn:<type> -->` markers naming which memory type each section came
+from. Exposed over MCP as read-only `whoami`.
+
+Two decisions worth not re-litigating:
+
+1. **It ships incomplete.** A summary naming two things still improves the next
+   answer; a blocked one just looks broken. Truncation stops at a section
+   boundary rather than mid-sentence.
+2. **There is no `update_identity` tool, and this was not an oversight.**
+   `memory:write` sits in `RESERVED_MCP_SCOPES` so it can never be granted —
+   nothing over MCP changes saved content without human review. A tool that
+   overwrites the summary would be the first exception, and the summary is
+   precisely what a person sees when they ask what Cairn knows about them. The
+   column exists; the editor belongs on Settings, behind their own sign-in.
+
+This diverges from Unabyss, which does expose `update_identity` over MCP and
+relies on the assistant asking first. Cairn enforces it structurally instead.
+
 ## Not done
 
 - **Sign-in is still `AUTH_PROVIDER=fixture`**, deliberately, so the stack could
