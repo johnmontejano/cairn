@@ -183,20 +183,31 @@ SDK, matching the reasoning already applied to WorkOS.
 Cairn never holds provider credentials. Linking goes through a Connect Link the
 person opens themselves, so Gmail and Drive tokens live at Pipedream.
 
-Two things are deliberately unfinished rather than guessed:
+Verified against the live service on 2026-07-31, commit `b8e69ee`. The
+credential exposed two defects that were invisible without a real call, and both
+would have shipped:
 
-1. `TOKEN_ENDPOINT` is **unverified**. `pipedream.com/docs` returned 502 on every
-   path while this was written, so the constant holds the conventional OAuth2
-   client-credentials URL. It is isolated in one place so correcting it is a
-   one-line change once a real call can be made.
-2. `PipedreamConnector.list()` throws setup-required instead of mapping tools.
-   Discovery through `tools/list` is implemented and works; binding each app's
-   list-and-fetch to `FetchedSource` needs one live credential to verify
-   against. An unexecuted mapping would be faked success.
+1. **The endpoint answers `text/event-stream`**, even for a single
+   request-response exchange. `res.json()` threw on the `event: message`
+   preamble, so every request through this layer would have failed.
+   `parseRpcBody()` now reads the last `data:` frame and still accepts plain
+   JSON, since nothing in the protocol promises the framing stays.
+2. **Half of what an app exposes mutates.** Notion returns twelve tools:
+   create-page, update-page, update-database, append-block and create-comment
+   sit beside search and retrieve. This connector declares `readOnly = true`, so
+   `readOnlyTools()` filters on the verb in the tool name and treats an
+   unrecognised verb as a write — a new verb fails closed.
 
-Blocked on `PIPEDREAM_CLIENT_ID` and `PIPEDREAM_CLIENT_SECRET`.
-`PIPEDREAM_PROJECT_ID=proj_OesEKRE` and `PIPEDREAM_ENVIRONMENT=development` are
-already set in Vercel.
+`TOKEN_ENDPOINT` was a guess made while their docs returned 502. It was right:
+HTTP 200, `expires_in` 3600, matching the coded fallback.
+
+Still unfinished: `PipedreamConnector.list()` throws setup-required rather than
+mapping tools onto `FetchedSource`. Discovery works; the per-app mapping is the
+remaining work and is now unblocked.
+
+Credentials are set in Vercel. **`PIPEDREAM_ENVIRONMENT` must be `production`**
+to match the Connect tab — a mismatch sends requests to an environment with no
+connected accounts and returns nothing, with no error to explain why.
 
 ## Identity summary (2026-07-31)
 
