@@ -129,8 +129,75 @@ export function pipedreamConnectUrl(input: { token: string; app: string }): stri
 }
 
 interface JsonRpcResponse {
-  result?: { content?: Array<{ type: string; text?: string }>; tools?: unknown[] };
+  result?: { content?: Array<{ type: string; text?: string }>; tools?: PipedreamTool[] };
   error?: { code: number; message: string };
+}
+
+export interface PipedreamTool {
+  name: string;
+  title?: string;
+  description?: string;
+}
+
+/**
+ * Reads the JSON-RPC payload out of a response.
+ *
+ * The endpoint answers `text/event-stream` even for a single request-response
+ * exchange, so `res.json()` throws on the `event: message` preamble. Verified
+ * against the live service on 2026-07-31; a plain JSON body is still accepted
+ * because nothing in the protocol promises it will always be framed.
+ */
+export function parseRpcBody(raw: string): JsonRpcResponse {
+  const trimmed = raw.trimStart();
+  if (trimmed.startsWith('{')) return JSON.parse(trimmed) as JsonRpcResponse;
+
+  // Take the last data: frame — a stream may carry progress notifications
+  // before the result, and the result is what the caller asked for.
+  const frames = raw
+    .split('\n')
+    .filter((line) => line.startsWith('data:'))
+    .map((line) => line.slice(5).trim())
+    .filter((body) => body.length > 0 && body !== '[DONE]');
+
+  if (frames.length === 0) {
+    throw new ValidationError(
+      'Pipedream returned no JSON-RPC frame',
+      'That connection could not be read just now. Nothing was changed.',
+    );
+  }
+  return JSON.parse(frames[frames.length - 1]!) as JsonRpcResponse;
+}
+
+/**
+ * Tools that only read.
+ *
+ * Half of what an app exposes here mutates: for Notion the list includes
+ * create-page, update-page, append-block and create-comment alongside search
+ * and retrieve. Cairn's connector contract declares `readOnly = true`, and that
+ * has to be enforced by never surfacing a write rather than by trusting nothing
+ * to call one.
+ *
+ * Matched on the verb in the tool name, which is how Pipedream names them
+ * consistently across apps. Anything unrecognised is treated as a write, so a
+ * new verb fails closed.
+ */
+const READ_VERBS = [
+  'search',
+  'retrieve',
+  'query',
+  'get',
+  'list',
+  'find',
+  'read',
+  'download',
+  'export',
+];
+
+export function readOnlyTools(tools: readonly PipedreamTool[]): PipedreamTool[] {
+  return tools.filter((tool) => {
+    const verb = tool.name.includes('-') ? tool.name.split('-').slice(1).join('-') : tool.name;
+    return READ_VERBS.some((allowed) => verb.startsWith(allowed));
+  });
 }
 
 /**
@@ -175,7 +242,7 @@ export async function pipedreamRpc(input: {
       'That connection could not be read just now. Nothing was changed.',
     );
   }
-  const body = (await res.json()) as JsonRpcResponse;
+  const body = parseRpcBody(await res.text());
   if (body.error) {
     throw new ValidationError(
       `Pipedream ${input.method} error: ${body.error.message}`,
@@ -209,8 +276,13 @@ export class PipedreamConnector implements SourceConnector {
     return 'ready';
   }
 
-  /** The tools this app exposes for the given person. */
-  async tools(externalUserId: string): Promise<unknown[]> {
+  /**
+   * The read-only tools this app exposes for the given person.
+   *
+   * Filtered rather than returned whole: the raw list mixes reads and writes,
+   * and this connector promises `readOnly`.
+   */
+  async tools(externalUserId: string): Promise<PipedreamTool[]> {
     const body = await pipedreamRpc({
       config: this.config,
       externalUserId,
@@ -218,7 +290,7 @@ export class PipedreamConnector implements SourceConnector {
       method: 'tools/list',
       fetchImpl: this.fetchImpl,
     });
-    return body.result?.tools ?? [];
+    return readOnlyTools(body.result?.tools ?? []);
   }
 
   async list(input: {
