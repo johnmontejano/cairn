@@ -261,11 +261,13 @@ export async function loadSources(context: RequestContext): Promise<SourcesView>
       connections,
       items,
       jobs,
-      available: (['google_drive', 'notion', 'github'] as const).map((provider) => ({
-        provider,
-        status: connectorStatus(provider, context.services.config),
-        description: CONNECTOR_DESCRIPTIONS[provider],
-      })),
+      available: (['google_drive', 'notion', 'gmail', 'google_calendar', 'github'] as const).map(
+        (provider) => ({
+          provider,
+          status: connectorStatus(provider, context.services.config),
+          description: CONNECTOR_DESCRIPTIONS[provider],
+        }),
+      ),
     };
   });
 }

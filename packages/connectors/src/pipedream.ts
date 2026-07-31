@@ -36,11 +36,9 @@ const MCP_BASE = 'https://remote.mcp.pipedream.net/v3';
 /**
  * Token endpoint for the project-level credential.
  *
- * NOT verified against live documentation: pipedream.com/docs returned 502 on
- * every path when this was written, so this is the conventional OAuth2
- * client-credentials endpoint for their API rather than a confirmed one. It is
- * isolated here, and in one constant, precisely so correcting it is a one-line
- * change once the credentials exist and a real call can be made.
+ * Verified against the live service on 2026-07-31: client-credentials grant,
+ * HTTP 200, `expires_in` 3600 — which is where the one-hour fallback below
+ * comes from rather than a guess.
  */
 const TOKEN_ENDPOINT = 'https://api.pipedream.com/v1/oauth/token';
 
@@ -192,6 +190,47 @@ const READ_VERBS = [
   'download',
   'export',
 ];
+
+/**
+ * Which app, and which of its tools, each provider uses.
+ *
+ * Tool names were read off a live `tools/list` on 2026-07-31 rather than taken
+ * from documentation. Every app exposes far more than this — Drive alone
+ * returns 48 tools — so the pair recorded here is the one that answers "what
+ * exists" and "give me its contents", which is all ingestion needs.
+ *
+ * Kept as a table rather than a subclass per app because the difference between
+ * these connectors really is two strings. A new app is a row until one of them
+ * needs behaviour the others do not.
+ */
+export interface PipedreamAppBinding {
+  app: string;
+  displayName: string;
+  /** Enumerates what the connection can see. */
+  listTool: string;
+  /** Fetches one item's content. */
+  fetchTool: string;
+  permissionSummary: string;
+}
+
+export const PIPEDREAM_APPS: Readonly<Record<string, PipedreamAppBinding>> = {
+  gmail: {
+    app: 'gmail',
+    displayName: 'Gmail',
+    listTool: 'gmail-find-email',
+    fetchTool: 'gmail-list-thread-messages',
+    permissionSummary:
+      'Reads messages in your Gmail so their contents can become memory. It never sends, replies to, deletes, or files anything, and it never writes on your behalf.',
+  },
+  google_calendar: {
+    app: 'google_calendar',
+    displayName: 'Google Calendar',
+    listTool: 'google_calendar-list-events',
+    fetchTool: 'google_calendar-get-event',
+    permissionSummary:
+      'Reads events on your calendar so what was decided and who attended can become memory. It never creates, moves, or cancels anything.',
+  },
+};
 
 export function readOnlyTools(tools: readonly PipedreamTool[]): PipedreamTool[] {
   return tools.filter((tool) => {
@@ -345,4 +384,35 @@ export class UnconfiguredPipedreamConnector implements SourceConnector {
       'PIPEDREAM_CLIENT_SECRET',
     ]);
   }
+}
+
+/**
+ * Builds the connector for a Pipedream-backed provider.
+ *
+ * Returns the unconfigured stand-in when credentials are absent, so the
+ * interface can say "setup required" honestly rather than offering something
+ * that fails only once someone tries to use it.
+ */
+export function createPipedreamConnector(
+  provider: SourceProvider,
+  config = getConfig(),
+): SourceConnector | null {
+  const binding = PIPEDREAM_APPS[provider];
+  if (!binding) return null;
+
+  const cfg = pipedreamConfig(config);
+  if (!cfg) {
+    return new UnconfiguredPipedreamConnector(
+      provider,
+      binding.displayName,
+      binding.permissionSummary,
+    );
+  }
+  return new PipedreamConnector(
+    provider,
+    binding.displayName,
+    binding.permissionSummary,
+    binding.app,
+    cfg,
+  );
 }

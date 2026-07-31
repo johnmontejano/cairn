@@ -218,6 +218,11 @@ export const sourceProviders = [
   'google_drive',
   'github',
   'notion',
+  // Reached through Pipedream rather than a hand-written client. Drive and
+  // GitHub stay hand-written: replacing connectors that already work and are
+  // tested with untested ones would trade certainty for consistency.
+  'gmail',
+  'google_calendar',
 ] as const;
 export type SourceProvider = (typeof sourceProviders)[number];
 

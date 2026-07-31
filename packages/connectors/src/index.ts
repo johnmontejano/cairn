@@ -3,6 +3,7 @@ import type { SourceConnector, SourceProvider } from '@cairn/domain';
 import { createGoogleDriveConnector } from './googleDrive';
 import { createGitHubConnector } from './github';
 import { createNotionConnector } from './notion';
+import { createPipedreamConnector } from './pipedream';
 
 export * from './url';
 export * from './googleDrive';
@@ -84,6 +85,28 @@ export const CONNECTOR_DESCRIPTIONS: Record<SourceProvider, ConnectorDescription
     readOnly: true,
     needsAccount: true,
   },
+  gmail: {
+    provider: 'gmail',
+    displayName: 'Gmail',
+    summary: 'Keep memory up to date from what you already discuss over email.',
+    permissionSummary:
+      'Reads messages in your Gmail so their contents can become memory. It never sends, replies to, deletes, or files anything, and it never writes on your behalf.',
+    disconnectSummary:
+      'Disconnecting stops future reading and deletes the stored permission immediately. Memory already saved stays until you remove it.',
+    readOnly: true,
+    needsAccount: true,
+  },
+  google_calendar: {
+    provider: 'google_calendar',
+    displayName: 'Google Calendar',
+    summary: 'Remember what was decided in meetings, and who was there.',
+    permissionSummary:
+      'Reads events on your calendar so what was decided and who attended can become memory. It never creates, moves, or cancels anything.',
+    disconnectSummary:
+      'Disconnecting stops future reading and deletes the stored permission immediately. Memory already saved stays until you remove it.',
+    readOnly: true,
+    needsAccount: true,
+  },
   notion: {
     provider: 'notion',
     displayName: 'Notion',
@@ -112,6 +135,10 @@ export function connectorStatus(
       return config.providers.github.state;
     case 'notion':
       return config.providers.notion.state;
+    // Reached through Pipedream, so one credential decides them all.
+    case 'gmail':
+    case 'google_calendar':
+      return config.providers.pipedream.state;
   }
 }
 
@@ -122,6 +149,9 @@ export function createConnector(
   if (provider === 'google_drive') return createGoogleDriveConnector(config);
   if (provider === 'github') return createGitHubConnector(config);
   if (provider === 'notion') return createNotionConnector(config);
+  if (provider === 'gmail' || provider === 'google_calendar') {
+    return createPipedreamConnector(provider, config);
+  }
   // Paste, upload and URL arrive as a direct request rather than by polling a
   // provider, so they have no lister.
   return null;
