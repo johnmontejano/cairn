@@ -225,7 +225,23 @@ export interface MemoryConflict {
 export const setupSteps = ['offer', 'connect', 'save_back', 'ready'] as const;
 export type SetupStep = (typeof setupSteps)[number];
 
+/**
+ * The floor, below which the product cannot demonstrate itself. One source
+ * proves the mechanism works; two prove the point, which is that context arrives
+ * from more than one place.
+ */
 export const MINIMUM_CONNECTED_APPS = 2;
+
+/**
+ * What the interface should ask for, which is not the same number.
+ *
+ * The gate is where setup stops being blocked. This is where answers start
+ * being good. Collapsing the two would either block people who could have
+ * carried on, or let them reach a first answer thin enough to conclude the
+ * product does not work — and that conclusion is drawn once and rarely
+ * revisited.
+ */
+export const RECOMMENDED_CONNECTED_APPS = 3;
 
 /** What an assistant may write back without being asked each time. */
 export const saveBackModes = ['everything', 'important', 'nothing'] as const;
