@@ -3,17 +3,23 @@ import type { SourceConnector, SourceProvider } from '@cairn/domain';
 import { createGoogleDriveConnector } from './googleDrive';
 import { createGitHubConnector } from './github';
 import { createNotionConnector } from './notion';
-import { createPipedreamConnector } from './pipedream';
+import { createGmailConnector } from './gmail';
+import { createGoogleCalendarConnector } from './googleCalendar';
 
 export * from './url';
+export * from './google';
 export * from './googleDrive';
 export * from './github';
 export * from './notion';
+export * from './gmail';
+export * from './googleCalendar';
 export * from './pipedream';
 export * from './fixtures/sample';
 export { DRIVE_FIXTURE_FILES } from './fixtures/googleDrive';
 export { GITHUB_FIXTURE_FILES } from './fixtures/github';
 export { NOTION_FIXTURE_PAGES } from './fixtures/notion';
+export { GMAIL_FIXTURE_MESSAGES } from './fixtures/gmail';
+export { CALENDAR_FIXTURE_EVENTS } from './fixtures/googleCalendar';
 
 /**
  * What the user is told before connecting anything.
@@ -135,10 +141,18 @@ export function connectorStatus(
       return config.providers.github.state;
     case 'notion':
       return config.providers.notion.state;
-    // Reached through Pipedream, so one credential decides them all.
+    // Drive, Gmail and Calendar share one Google Cloud OAuth client — see
+    // ./google — so one credential check decides all three. This replaced
+    // routing these two through Pipedream on 2026-08-01: Pipedream's own
+    // Connect-components API returned "not enabled for this organization" on
+    // a live account with a healthy, correctly linked token, with no setting
+    // anywhere in their dashboard to fix it, and no error surface in their
+    // Event History either (Connect traffic is explicitly excluded from it).
+    // A blocked path with no visible way to unblock it is worse than a second
+    // OAuth integration this project already knows how to build and test.
     case 'gmail':
     case 'google_calendar':
-      return config.providers.pipedream.state;
+      return config.providers.googleDrive.state;
   }
 }
 
@@ -149,9 +163,8 @@ export function createConnector(
   if (provider === 'google_drive') return createGoogleDriveConnector(config);
   if (provider === 'github') return createGitHubConnector(config);
   if (provider === 'notion') return createNotionConnector(config);
-  if (provider === 'gmail' || provider === 'google_calendar') {
-    return createPipedreamConnector(provider, config);
-  }
+  if (provider === 'gmail') return createGmailConnector(config);
+  if (provider === 'google_calendar') return createGoogleCalendarConnector(config);
   // Paste, upload and URL arrive as a direct request rather than by polling a
   // provider, so they have no lister.
   return null;

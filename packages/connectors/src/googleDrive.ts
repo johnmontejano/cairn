@@ -5,6 +5,7 @@ import {
   SetupRequiredError,
   ValidationError,
 } from '@cairn/domain';
+import { type GoogleOAuthConfig, freshAccessToken, googleOAuthConfig } from './google';
 import { DRIVE_FIXTURE_FILES } from './fixtures/googleDrive';
 
 /**
@@ -14,6 +15,10 @@ import { DRIVE_FIXTURE_FILES } from './fixtures/googleDrive';
  * person's Drive, and asking for a write scope would make that promise
  * unverifiable. Google Docs are exported as plain text rather than downloaded,
  * because their native format is not a document we could cite offsets into.
+ *
+ * The OAuth plumbing lives in ./google and is shared with Gmail and Calendar,
+ * which sit behind the same Google Cloud client. This file keeps only what is
+ * actually specific to Drive: its scope, and its list-and-download API shape.
  */
 
 export const DRIVE_SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
@@ -32,109 +37,8 @@ const DOWNLOADABLE = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ];
 
-export interface GoogleDriveConfig {
-  clientId: string;
-  clientSecret: string;
-  redirectUri: string;
-}
-
-export function googleDriveConfig(config = getConfig()): GoogleDriveConfig | null {
-  const { env } = config;
-  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET || !env.GOOGLE_REDIRECT_URI) return null;
-  return {
-    clientId: env.GOOGLE_CLIENT_ID,
-    clientSecret: env.GOOGLE_CLIENT_SECRET,
-    redirectUri: env.GOOGLE_REDIRECT_URI,
-  };
-}
-
-export function googleAuthorizeUrl(config: GoogleDriveConfig, state: string): string {
-  const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
-  url.searchParams.set('client_id', config.clientId);
-  url.searchParams.set('redirect_uri', config.redirectUri);
-  url.searchParams.set('response_type', 'code');
-  url.searchParams.set('scope', DRIVE_SCOPES.join(' '));
-  url.searchParams.set('access_type', 'offline');
-  url.searchParams.set('prompt', 'consent');
-  url.searchParams.set('include_granted_scopes', 'false');
-  url.searchParams.set('state', state);
-  return url.toString();
-}
-
-export interface GoogleTokens {
-  accessToken: string;
-  refreshToken: string | null;
-  expiresAt: number;
-  accountLabel: string | null;
-}
-
-export async function exchangeGoogleCode(
-  config: GoogleDriveConfig,
-  code: string,
-  fetchImpl: typeof fetch = fetch,
-): Promise<GoogleTokens> {
-  const res = await fetchImpl('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      code,
-      client_id: config.clientId,
-      client_secret: config.clientSecret,
-      redirect_uri: config.redirectUri,
-      grant_type: 'authorization_code',
-    }),
-  });
-  if (!res.ok) throw new ValidationError(`Google token exchange failed (${res.status})`);
-  const body = (await res.json()) as {
-    access_token: string;
-    refresh_token?: string;
-    expires_in: number;
-    scope?: string;
-  };
-  // Refuse a grant that is broader than what we asked for.
-  const granted = (body.scope ?? '').split(' ').filter(Boolean);
-  if (
-    granted.some(
-      (s) => !DRIVE_SCOPES.includes(s) && !s.startsWith('https://www.googleapis.com/auth/userinfo'),
-    )
-  ) {
-    throw new ValidationError(
-      `Unexpected Google scopes granted: ${granted.join(' ')}`,
-      'The permissions granted were wider than requested, so the connection was refused.',
-    );
-  }
-  return {
-    accessToken: body.access_token,
-    refreshToken: body.refresh_token ?? null,
-    expiresAt: Date.now() + body.expires_in * 1000,
-    accountLabel: null,
-  };
-}
-
-export async function refreshGoogleToken(
-  config: GoogleDriveConfig,
-  refreshToken: string,
-  fetchImpl: typeof fetch = fetch,
-): Promise<GoogleTokens> {
-  const res = await fetchImpl('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      refresh_token: refreshToken,
-      client_id: config.clientId,
-      client_secret: config.clientSecret,
-      grant_type: 'refresh_token',
-    }),
-  });
-  if (!res.ok) throw new ValidationError(`Google token refresh failed (${res.status})`);
-  const body = (await res.json()) as { access_token: string; expires_in: number };
-  return {
-    accessToken: body.access_token,
-    refreshToken,
-    expiresAt: Date.now() + body.expires_in * 1000,
-    accountLabel: null,
-  };
-}
+/** Kept as the name this connector's own config used to have, now a re-export. */
+export const googleDriveConfig = googleOAuthConfig;
 
 interface DriveFile {
   id: string;
@@ -154,7 +58,7 @@ export class GoogleDriveConnector implements SourceConnector {
     'Reads the documents in your Google Drive so their contents can be turned into memory. It never edits, moves, or deletes anything in your Drive, and it never posts anything on your behalf.';
 
   constructor(
-    private readonly config: GoogleDriveConfig,
+    private readonly config: GoogleOAuthConfig,
     private readonly fetchImpl: typeof fetch = fetch,
   ) {}
 
@@ -171,12 +75,8 @@ export class GoogleDriveConnector implements SourceConnector {
     nextCursor: string | null;
   }> {
     if (!input.credential) throw new SetupRequiredError('Google Drive', ['connection credential']);
-    const tokens = JSON.parse(input.credential) as GoogleTokens;
-    const accessToken =
-      tokens.expiresAt > Date.now() + 30_000
-        ? tokens.accessToken
-        : (await refreshGoogleToken(this.config, tokens.refreshToken ?? '', this.fetchImpl))
-            .accessToken;
+    const tokens = JSON.parse(input.credential) as import('./google').GoogleTokens;
+    const accessToken = await freshAccessToken(this.config, tokens, this.fetchImpl);
 
     const url = new URL('https://www.googleapis.com/drive/v3/files');
     url.searchParams.set('pageSize', '25');
@@ -242,7 +142,7 @@ export class FixtureGoogleDriveConnector implements SourceConnector {
     clientId: '',
     clientSecret: '',
     redirectUri: '',
-  }).permissionSummary;
+  } satisfies GoogleOAuthConfig).permissionSummary;
 
   status(): 'setup-required' {
     return 'setup-required';

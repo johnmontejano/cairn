@@ -9,9 +9,14 @@ import {
   EXAMPLE_DOCUMENT_TITLE,
   EXAMPLE_FOLLOW_UP,
   EXAMPLE_FOLLOW_UP_TITLE,
+  CALENDAR_SCOPES,
+  DRIVE_SCOPES,
+  GMAIL_SCOPES,
   createConnector,
   createPipedreamConnectLink,
   fetchUrlSafely,
+  googleAuthorizeUrl,
+  googleOAuthConfig,
   pipedreamConfig,
   CONNECTOR_DESCRIPTIONS,
   PIPEDREAM_APPS,
@@ -625,6 +630,17 @@ const CONNECTION_SCOPES: Partial<Record<SourceProvider, string[]>> = {
   google_calendar: ['events:read'],
 };
 
+/**
+ * Real Google OAuth scopes, as opposed to the display-only ones above. Present
+ * for exactly the providers that share the Google Cloud client in
+ * @cairn/connectors's google.ts — used to build the authorize handoff below.
+ */
+const GOOGLE_SCOPES_BY_PROVIDER: Partial<Record<SourceProvider, readonly string[]>> = {
+  google_drive: DRIVE_SCOPES,
+  gmail: GMAIL_SCOPES,
+  google_calendar: CALENDAR_SCOPES,
+};
+
 export async function connectSource(
   _prev: ActionResult,
   formData: FormData,
@@ -675,10 +691,10 @@ export async function connectSource(
       return connection.id;
     });
 
-    // Providers reached through Pipedream cannot be finished here: authorising
+    // No provider this action can reach finishes authorising here: it always
     // happens between the person and the provider, and this process never sees
-    // the credential. So the record exists, and they are handed a link rather
-    // than told they are connected when they are not.
+    // the credential either way. So the record exists, and they are handed a
+    // link rather than told they are connected when they are not.
     let handoffUrl: string | undefined;
     if (binding && status === 'ready') {
       const pdConfig = pipedreamConfig(context.services.config);
@@ -690,6 +706,15 @@ export async function connectSource(
           app: binding.app,
         });
         handoffUrl = link.url;
+      }
+    }
+    const googleScopes = GOOGLE_SCOPES_BY_PROVIDER[provider];
+    if (googleScopes && status === 'ready') {
+      const oauth = googleOAuthConfig(context.services.config);
+      if (oauth) {
+        // `state` is the connection's own id: the callback looks up this exact
+        // row rather than trusting anything else in the redirect.
+        handoffUrl = googleAuthorizeUrl(oauth, googleScopes, connectionId);
       }
     }
 
