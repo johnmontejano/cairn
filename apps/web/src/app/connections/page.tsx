@@ -29,39 +29,71 @@ export const dynamic = 'force-dynamic';
  * yet costs someone a wasted attempt and the belief that they broke it; naming
  * it plainly costs nothing and is true.
  */
-const MCP_CLIENTS: ReadonlyArray<{ name: string; how: string; supported: boolean }> = [
-  {
-    name: 'Claude Desktop',
-    how: 'Add Cairn to your MCP servers in Settings, then paste the connection code when it asks.',
-    supported: true,
-  },
-  {
-    name: 'Claude Code',
-    how: 'Run the claude mcp add command in your terminal, then paste the connection code.',
-    supported: true,
-  },
-  {
-    name: 'Cursor',
-    how: 'Add Cairn under MCP in Cursor settings, with the connection code as the token.',
-    supported: true,
-  },
-  {
-    name: 'VS Code',
-    how: 'Add Cairn through the MCP extension, using the connection code to sign in.',
-    supported: true,
-  },
-  {
-    name: 'ChatGPT',
-    how: 'Needs remote sign-in, which is built but has never been run against a live issuer. Connection codes are the tested path until it has been.',
-    supported: false,
-  },
-];
+function mcpClients(
+  signInMode: boolean,
+): ReadonlyArray<{ name: string; how: string; supported: boolean }> {
+  if (!signInMode) {
+    return [
+      {
+        name: 'Claude Desktop',
+        how: 'Add Cairn to your MCP servers in Settings, then paste the connection code when it asks.',
+        supported: true,
+      },
+      {
+        name: 'Claude Code',
+        how: 'Run the claude mcp add command in your terminal, then paste the connection code.',
+        supported: true,
+      },
+      {
+        name: 'Cursor',
+        how: 'Add Cairn under MCP in Cursor settings, with the connection code as the token.',
+        supported: true,
+      },
+      {
+        name: 'VS Code',
+        how: 'Add Cairn through the MCP extension, using the connection code to sign in.',
+        supported: true,
+      },
+      {
+        name: 'ChatGPT',
+        how: 'Needs the sign-in method this copy of Cairn does not have turned on. Connection codes are the tested path here.',
+        supported: false,
+      },
+    ];
+  }
+  return [
+    {
+      name: 'Claude',
+      how: 'Settings → Connectors → Add custom connector, then paste the address below. Claude opens a Cairn page where you say yes.',
+      supported: true,
+    },
+    {
+      name: 'ChatGPT',
+      how: 'Settings → Apps → Create, paste the address below, and choose sign-in when it asks how to connect.',
+      supported: true,
+    },
+    {
+      name: 'Cursor',
+      how: 'Add Cairn under MCP in Cursor settings using the address below. It will send you here to approve it.',
+      supported: true,
+    },
+    {
+      name: 'Claude Code',
+      how: 'Run claude mcp add --transport http cairn with the address below. Your browser opens for approval.',
+      supported: true,
+    },
+  ];
+}
 
 export default async function ConnectionsPage() {
   const context = await requireContext();
   const csrf = await csrfToken();
   const view = await loadConnections(context);
   const active = view.clients.filter((c) => !c.revokedAt);
+  // When sign-in is available, pasting an address is the whole story and the
+  // connection-code machinery becomes the fallback for tools that cannot do it.
+  const signInMode = view.authMode === 'oauth';
+  const clients = mcpClients(signInMode);
 
   return (
     <AppShell current="/connections" email={context.email}>
@@ -84,16 +116,36 @@ export default async function ConnectionsPage() {
         </ul>
       </Callout>
 
+      {signInMode ? (
+        <section style={{ marginTop: '2rem' }} aria-labelledby="address">
+          <h2 id="address" className="cairn-section-title">
+            Start here
+          </h2>
+          <Card>
+            <p style={{ marginTop: 0 }}>
+              Copy this address into the AI tool you want to use. It will bring you back here to ask
+              whether that is alright, and you say yes once.
+            </p>
+            <pre className="cairn-code">{view.mcpUrl}</pre>
+            <p className="cairn-meta" style={{ marginBottom: 0 }}>
+              You do not need a code, a file, or a terminal. Everything below is only for tools that
+              cannot use an address.
+            </p>
+          </Card>
+        </section>
+      ) : null}
+
       <section style={{ marginTop: '2rem' }} aria-labelledby="which-tool">
         <h2 id="which-tool" className="cairn-section-title">
           How to connect each tool
         </h2>
         <p style={{ color: 'var(--cairn-ink-muted)', marginTop: 0 }}>
-          Every tool below uses the same connection code, made in the next section. What differs is
-          where you put it.
+          {signInMode
+            ? 'Every tool below uses the same address. What differs is where you paste it.'
+            : 'Every tool below uses the same connection code, made in the next section. What differs is where you put it.'}
         </p>
         <div className="cairn-grid">
-          {MCP_CLIENTS.map((client) => (
+          {clients.map((client) => (
             <Card key={client.name}>
               <div className="cairn-card__header">
                 <div>
@@ -113,8 +165,14 @@ export default async function ConnectionsPage() {
 
       <section style={{ marginTop: '2rem' }} aria-labelledby="new-connection">
         <h2 id="new-connection" className="cairn-section-title">
-          Connect a new tool
+          {signInMode ? 'Or make a connection code' : 'Connect a new tool'}
         </h2>
+        {signInMode ? (
+          <p style={{ color: 'var(--cairn-ink-muted)', marginTop: 0 }}>
+            Only needed for a tool that cannot use the address above, or one running on a computer
+            with no browser.
+          </p>
+        ) : null}
         <Card>
           <ActionForm
             action={createConnectedAi}

@@ -426,10 +426,75 @@ export const mcpClients = pgTable('mcp_clients', {
   maxSensitivity: text('max_sensitivity').notNull().default('normal'),
   tokenHash: text('token_hash'),
   subject: text('subject'),
+  oauthClientId: text('oauth_client_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
 });
+
+/**
+ * Registered OAuth clients, global rather than per-workspace.
+ *
+ * A client registers once and many people then authorize it against their own
+ * workspace, so there is nothing tenant-scoped here. Every column is public
+ * OAuth client metadata; no client secret is stored, because OAuth 2.1 requires
+ * PKCE for public clients and every MCP client is one.
+ */
+export const oauthClients = pgTable('oauth_clients', {
+  clientId: text('client_id').primaryKey(),
+  clientName: text('client_name').notNull(),
+  redirectUris: text('redirect_uris').array().notNull(),
+  clientUri: text('client_uri'),
+  registrationType: text('registration_type').notNull().default('dynamic'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  metadataFetchedAt: timestamp('metadata_fetched_at', { withTimezone: true }),
+});
+
+export const oauthAuthorizationCodes = pgTable(
+  'oauth_authorization_codes',
+  {
+    id: uuid('id').notNull(),
+    workspaceId: uuid('workspace_id').notNull(),
+    codeHash: text('code_hash').notNull(),
+    oauthClientId: text('oauth_client_id').notNull(),
+    mcpClientId: uuid('mcp_client_id').notNull(),
+    redirectUri: text('redirect_uri').notNull(),
+    codeChallenge: text('code_challenge').notNull(),
+    codeChallengeMethod: text('code_challenge_method').notNull().default('S256'),
+    scopes: text('scopes').array().notNull(),
+    resource: text('resource').notNull(),
+    grantedBy: uuid('granted_by'),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    consumedAt: timestamp('consumed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.workspaceId, t.id] })],
+);
+
+/**
+ * Access and refresh tokens share a table because they differ only in lifetime
+ * and in what they can be exchanged for. `resource` carries the audience the
+ * specification requires a resource server to check.
+ */
+export const oauthTokens = pgTable(
+  'oauth_tokens',
+  {
+    id: uuid('id').notNull(),
+    workspaceId: uuid('workspace_id').notNull(),
+    kind: text('kind').notNull(),
+    tokenHash: text('token_hash').notNull(),
+    oauthClientId: text('oauth_client_id').notNull(),
+    mcpClientId: uuid('mcp_client_id').notNull(),
+    scopes: text('scopes').array().notNull(),
+    resource: text('resource').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    rotatedTo: uuid('rotated_to'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  },
+  (t) => [primaryKey({ columns: [t.workspaceId, t.id] })],
+);
 
 export const auditEvents = pgTable(
   'audit_events',

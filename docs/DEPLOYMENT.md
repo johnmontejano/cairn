@@ -6,13 +6,15 @@ the cost and the trust boundaries are visible before anyone commits to them.
 Target: Supabase (database, storage, queue), Vercel (website), Railway (worker),
 WorkOS (sign-in). See [cost controls](COST_CONTROLS.md) for what that costs.
 
-> **Status, 2026-07-28.** Steps 1 and 2 are done against Supabase project
-> `Ai-Memory` and verified: `vector` installed, migrations `0001`–`0004` applied
-> with checksums recorded, row-level security confirmed, private
-> `cairn-raw-sources` bucket created, and Supabase's security advisor reporting
-> zero errors. Steps 4 onward — WorkOS and the website — have not been done,
-> because they need account sign-in and secret entry. `memory/CURRENT_STATE.md`
-> holds the detail.
+> **Status, 2026-08-01.** Steps 1–3 are done and verified: Supabase project
+> `Ai-Memory` has `vector` installed, migrations applied with checksums
+> recorded, row-level security confirmed, a private `cairn-raw-sources`
+> bucket, and a clean security advisor report; the website is live at
+> <https://cairn-web-beta.vercel.app>. Step 4 — WorkOS — has an AuthKit
+> environment already created and its redirect URI already registered, but
+> `AUTH_PROVIDER` is still `fixture` in production: the account owner still
+> needs to copy the WorkOS API key and set the env vars below, since that's
+> secret entry only they can do. `memory/CURRENT_STATE.md` holds the detail.
 
 ## Running it for nothing
 

@@ -2,6 +2,249 @@
 
 Last updated: 2026-08-01
 
+## Remote MCP OAuth built and verified end to end (2026-08-01)
+
+NEXT_STEPS item 7 is done. It was described as "built but never run against a
+live issuer"; investigation found it could not have worked against **any**
+issuer, for two independent reasons, both now fixed:
+
+1. **No discovery existed.** The spec requires an MCP server to publish
+   Protected Resource Metadata (RFC 9728) and to point at it from the 401
+   `WWW-Authenticate` challenge via `resource_metadata`. Cairn published no such
+   document, and its challenge used `authorization_uri` / `resource` —
+   parameters no client reads. Discovery stopped at the first response, silently.
+2. **The lookup could never match.** `authenticateOauth` resolved callers by
+   `mcp_clients.subject`; the column existed and `createMcpClient` accepted it,
+   but **nothing in the app ever wrote a non-null value**. Every request ended
+   at "No connection has been approved for that identity."
+
+**Design decision: Cairn is now its own OAuth 2.1 authorization server for MCP.**
+Human sign-in is still delegated to the existing session (WorkOS-backed); Cairn
+only records what an already-signed-in person consented to. The missing half was
+never token verification — it was the _grant_, and that decision belongs on a
+Cairn page, not at an identity provider that knows nothing about memory scopes.
+Tokens are opaque and stored as SHA-256 hashes (same pattern as connection
+codes) rather than JWTs: the spec requires audience validation, not JWTs, and
+binding the audience to a row removes a signing key to manage. No new secret.
+
+Built: PRM + AS metadata (`/.well-known/*` via `next.config.ts` rewrites),
+DCR at `/api/oauth/register`, consent screen at `/connect` in Cairn's own design
+system, token endpoint at `/api/oauth/token`, migration `0008_mcp_oauth.sql`
+(`oauth_clients`, `oauth_authorization_codes`, `oauth_tokens`). A grant creates
+an ordinary `mcp_clients` row, so listing/revoking/auditing are unchanged and
+there is one notion of a connected AI. Revoking now kills live tokens rather
+than waiting up to an hour for expiry.
+
+**Deliberately not built: Client ID Metadata Documents.** The current spec
+prefers CIMD and marks DCR deprecated, but every shipping MCP client still uses
+DCR. A URL-shaped `client_id` is recognised and refused with an explanation
+naming the working alternative. CIMD means server-side fetching of an
+attacker-suppliable URL and deserves the same care as `fetchUrlSafely`.
+
+**Verified as a real round trip**, not at a mocked HTTP boundary
+(`tests/e2e/mcp-oauth.spec.ts`, desktop + mobile): 401 → PRM → AS metadata →
+dynamic registration → browser sign-in → consent → code delivered to a **real
+listener on a real port** → PKCE exchange → **official MCP SDK over Streamable
+HTTP listing tools and calling `whoami`**. Plus refusals: replayed code, wrong
+PKCE verifier, rotated-refresh reuse, decline, unregistered client, and a token
+requested for a different resource. The browser suite now runs with
+`MCP_AUTH_MODE=oauth` because that is the intended production configuration.
+
+`pnpm verify` green; `pnpm test:e2e` 59 passed, 1 pre-existing skip (was 44
+passed before this session, counting both the OAuth and recovery additions).
+See `docs/REMOTE_MCP_OAUTH.md`.
+
+**Not done — one flag for the user:** set `MCP_AUTH_MODE=oauth` in Vercel and
+redeploy, after applying migration `0008`. Nothing else is needed: no issuer, no
+JWKS URL, no audience, no new secret.
+
+## Backup and restore drilled by hand (2026-08-01)
+
+Previously built and unit-tested but never watched working. Run through the real
+interface against a live server, and kept as `tests/e2e/recovery.spec.ts`:
+
+- Source workspace with real approved memory → `my-project-2026-08-01.cairnbackup`,
+  2.7 KB. The example's sentences appear **nowhere** in the file as plaintext.
+- Restored into a **different signed-in account** — a workspace that had never
+  seen the data and holds a different key.
+- Dry run reported "Checked: 2 memories, 8 documents, **fingerprints match**"
+  and changed nothing (verified: the scratch workspace was still empty after).
+- Real restore reported "Restored 2 memories and 8 documents"; the scratch
+  workspace then showed the original sentences.
+- A wrong passphrase fails cleanly: "That passphrase did not open the backup, or
+  the file has been changed since it was made."
+
+**One discrepancy worth a look, not yet diagnosed:** the source workspace's
+`/home` said "1 thing saved" while the backup contained and restored 2 memories,
+and the restored workspace then said "2 things saved". `approvedCount` on `/home`
+and what the vault backs up appear to count different things. Not data loss —
+the restore had _more_, not less — but the number a person reads should match.
+
+## Onboarding benchmark against Unabyss (2026-08-01)
+
+`docs/ONBOARDING_BENCHMARK.md`. Step-by-step functional comparison built from
+Unabyss's **public** marketing/blog/changelog surface only — no authenticated
+session was used, per the standing originality decision and the independent
+copyright/ToS line. Seven functional gaps, most severe first; A is now closed by
+the OAuth work. B (unbounded wait with a manual "refresh this page"), C (49
+individual keep/remove decisions before a first answer), D (`/home` leads with
+counts rather than the identity summary that already exists), E (scope is
+per-connection, not per-content), F (providers offered that cannot work on a
+hosted deployment), G (no moment that invites connecting an AI) are open, with
+proposals written against Cairn's existing components.
+
+## Retention and privacy drafted for decision (2026-08-01)
+
+`docs/RETENTION_DECISIONS.md` — five decisions with tradeoffs and a
+recommendation on each, plus the thing most likely to be underpriced: Gmail and
+Calendar use **restricted** Google scopes, so a published privacy policy on the
+app's own domain is on the critical path to letting anyone else use Cairn at
+all, and restricted scopes can trigger an independent security assessment.
+
+`docs/PRIVACY_POLICY.md` — full draft naming every processor, including the
+Google Limited Use disclosure, an explicit statement that embeddings are stored
+unencrypted and partially reversible, and an explicit statement that Cairn has
+had no independent security review. Every open call is a `[DECIDE: …]` marker;
+none were decided on the user's behalf.
+
+## Both live fixes confirmed working (2026-08-01)
+
+User set `SUPABASE_SERVICE_ROLE_KEY` (the legacy `service_role` key, not the
+new-format `sb_secret_...` one) and all five WorkOS/session env vars in
+Vercel, then redeployed. Both verified live by the agent directly in the
+browser afterward, not just by reading logs:
+
+- **Gmail sync works end to end.** "Check for updates" on the live site
+  actually pulled real messages — Gmail shows "Connected — Checked just
+  now," and `/memory` holds 49 real extracted candidates (a "Do Not Sell My
+  Info" footer, a newsletter fact about the Blue Angels — genuine email
+  content, not fixture data). NEXT_STEPS item 0v is done.
+- **WorkOS switch is live.** The production sign-in page no longer shows
+  demo-mode copy, which only happens when `providers.auth.state` reports
+  `'ready'` — i.e., `AUTH_PROVIDER=workos` plus all required vars are
+  correctly read by the running deployment. Combined with the OAuth
+  state/CSRF and session-signing hardening verified earlier via
+  `pnpm verify`/`pnpm test:e2e`, this is strong confirmation.
+  **Not personally verified:** an actual stranger completing sign-up
+  end-to-end (WorkOS hosted page → email/magic-link code → new isolated
+  workspace) — that needs an inbox the agent doesn't have access to.
+
+**Also declined again, 2026-08-01:** user asked for a "super prompt" for a
+future Claude Code session (potentially via `/goal`) to literally clone
+Unabyss's frontend, backend, and MCP "down to the feel." Declined for the
+same reason as the mid-session request — see "The one thing declined,
+repeatedly, on purpose" below. Explicitly flagged that routing the same ask
+through a fresh, context-less session (or an automated `/goal` stop-hook,
+the exact mechanism that applied this pressure earlier in the project) does
+not change the answer.
+
+## WorkOS sign-up hardened and ready to switch on (2026-08-01)
+
+Investigation for "let anybody make an account" found the WorkOS AuthKit
+integration was already implemented on `main` — provider, callback route,
+env schema, docs, deploy-button vars — just never turned on. A WorkOS project
+("Cairn's Project") already exists in the user's real account too, with an
+"AuthKit" environment fully configured (sign-up allowed, email/password,
+magic link, Google/GitHub/Microsoft/Apple social sign-in, and a redirect URI
+already registered matching the existing callback route exactly). So this
+session's work was hardening two real gaps rather than building from scratch,
+both independently confirmed by parallel codebase exploration:
+
+1. **OAuth state/CSRF validation was missing entirely.** The callback route
+   passed `state` into `completeOAuth`, which silently dropped it; even on
+   the email-code path, `state` was just `base64url(email)`, checked against
+   nothing. Fixed: `WorkOsAuthProvider.startEmailSignIn` now returns a random
+   nonce (`challengeId`), `continueSignIn` stashes it in a new short-lived
+   `cairn_oauth_state` cookie before redirecting, and the callback route
+   rejects (`validOAuthState` in `apps/web/src/server/auth.ts`) unless the
+   returned `state` matches exactly. `completeOAuth`'s signature dropped the
+   now-superfluous `state` param (`packages/domain/src/ports.ts`).
+2. **`CAIRN_SESSION_SECRET` was required by config but never used.**
+   Sessions were opaque random tokens hashed into the DB — reasonable on its
+   own, but the documented "encrypts the session cookie" claim was false.
+   Fixed: `signSessionToken`/`verifySessionToken` in `auth.ts` HMAC-sign the
+   cookie value when a secret is configured (backward compatible — unsigned
+   when it isn't, e.g. local/fixture mode). Every place that read the raw
+   `cairn_session` cookie needed the matching unwrap: `context.ts`'s
+   `currentContext()`, and `actions.ts`'s `signOut()` and `hasSession()` — the
+   latter two were easy to miss since they don't go through `resolveSession`
+   directly at the call site that reads the cookie.
+
+Also extracted `workosConfig()` in `auth.ts` (mirrors `googleOAuthConfig()`
+in `packages/connectors/src/google.ts`) so `createAuthProvider()` has one
+source of truth for "is WorkOS configured" instead of its own inline check,
+and fixed `docs/DEPLOYMENT.md`'s status banner, which still said "WorkOS and
+the website have not been done" — stale since the site went live.
+
+New test file `tests/unit/workos-oauth.test.ts` covers the nonce generation,
+`validOAuthState`, and the sign/verify round trip (including a tampered
+signature, a wrong secret, and a secret configured but an unsigned legacy
+cookie — all correctly rejected).
+
+**Verified:** `pnpm verify` (format, lint, typecheck, all four vitest
+projects, production build) and `pnpm test:e2e` (44 tests, 43 passed, 1
+unrelated skip) both green, including the "signing out actually signs you
+out" e2e test, which exercises the new `signOut()` unwrap path.
+
+**Not done — deliberately left for the user, all live-secret entry:** copy
+the WorkOS API key from the existing AuthKit environment
+(`environment_01KYREZD6DT8FSGQ1T76RXACK1`, app "Cairn's Application") and set
+in Vercel → `cairn-web`: `AUTH_PROVIDER=workos`, `WORKOS_API_KEY` (just
+copied), `WORKOS_CLIENT_ID=client_01KYREZDZ7PHCF4JDETJR7KS0W` (not secret),
+`WORKOS_REDIRECT_URI=https://cairn-web-beta.vercel.app/api/oauth/workos/callback`
+(already registered), `CAIRN_SESSION_SECRET` (user-generated, e.g. `openssl
+rand -base64 32`). Then redeploy and verify a real stranger sign-up end to
+end — this agent did not view, copy, or enter any of these.
+
+No commit has been made yet — all of the above is uncommitted on `main`.
+
+## Two real bugs found verifying live Gmail sync (2026-08-01)
+
+NEXT_STEPS item 0v ("verify a real sync end to end") was run live against
+production for the first time: signed in to <https://cairn-web-beta.vercel.app>
+as the account owner and clicked "Check for updates" on the connected Gmail
+source. It failed, twice, for two independent reasons — both invisible to the
+unit and integration test suites because they mock the HTTP boundary rather
+than calling Google or Supabase for real.
+
+**Bug 1 — Gmail and Calendar APIs were never enabled in Google Cloud, fixed.**
+`connector.list()` in `packages/connectors/src/gmail.ts:115` got a 403 from
+`gmail.googleapis.com`. Granting OAuth scopes and enabling the underlying API
+are two separate steps in Google Cloud Console; only the first had been done.
+Confirmed via `console.cloud.google.com/apis/library/gmail.googleapis.com` —
+the "Enable" button was live, meaning the API was off. Enabled both Gmail API
+and Google Calendar API for project `ciarn-504204` with the user's explicit
+per-click approval. The connection then got past this step and reached
+Google's API for real.
+
+**Bug 2 — Supabase Storage rejects the service-role credential Vercel is
+sending, not yet fixed.** Past the Gmail call, `submitSource` failed writing
+the encrypted raw blob to the `cairn-raw-sources` bucket:
+`SupabaseObjectStore.put` in `packages/db/src/repositories/objectStore.ts:121`
+got a 400. Supabase's own Storage API log (Logs → Storage, project
+`ipzzmjipfmshhxcurtwe`) shows the real cause: `role: "anon"`,
+`error.message: "Invalid Compact JWS"`, `error.errorCode: "AccessDenied"`. The
+project has been migrated to Supabase's new API key system —
+`Settings → API Keys` shows a `sb_publishable_...` and `sb_secret_...` pair as
+the primary keys, with the legacy JWT-format `anon`/`service_role` pair
+(`eyJhbGciOi...`) demoted to a "Legacy" tab. `objectStore.ts` sends whatever is
+in the `SUPABASE_SERVICE_ROLE_KEY` Vercel env var as a bearer JWT to Storage's
+REST endpoint; Storage tries to parse it as a compact JWS and fails, so it
+falls back to the `anon` role, which has no write policy on a private bucket.
+Whatever is currently in that Vercel env var is very likely the new-format
+`sb_secret_...` key, not the legacy JWT `service_role` key the code expects.
+
+**Not fixed, and deliberately left for the user:** the fix is to open
+`Settings → API Keys → Legacy anon, service_role API keys` on the
+`ipzzmjipfmshhxcurtwe` Supabase project, reveal the `service_role` secret, and
+paste it into `SUPABASE_SERVICE_ROLE_KEY` in the `cairn-web` Vercel project's
+environment variables, replacing whatever is there now. This agent does not
+view, copy, or paste API keys/credentials into any field — that step needs the
+user. Once updated (and redeployed, since env var changes need a new
+deployment or a redeploy to take effect), retrigger "Check for updates" on
+Gmail and confirm a message actually lands in Memory — the original point of
+item 0v, still open.
+
 ## Gmail, Calendar and Drive now use real Google OAuth, not Pipedream (2026-08-01)
 
 All on `main`, deployed and **verified live with a real Google account**:
@@ -100,6 +343,21 @@ architecture, same setup flow, original visual surface — was delivered
 instead. If a future session is asked to make it "look the same," that is a
 decision for the user to explicitly overrule in `DECISIONS.md`, not one to
 infer from renewed pressure.
+
+**Asked again, explicitly, on 2026-08-01** — this time as "literally copy it
+down to the tee, exactly how Unabyss works from the front end to the back
+end," with an offer to use the user's own logged-in Unabyss session as
+reference. Declined again, but for a different and independent reason than
+the earlier design-taste framing: this is not only the project's own
+originality decision, it is a copyright/ToS problem regardless of who
+authorizes it. Reproducing another company's copyrighted UI, illustrations,
+and copy, or their proprietary backend implementation, by extracting it from
+an authenticated session is not something the user's own account access
+licenses either party to do — it is Unabyss's IP, and scraping an
+authenticated session to build a competing clone violates essentially every
+SaaS ToS. The agent did not browse the user's Unabyss account for this
+purpose. A future session should treat this the same way: not a design
+preference to negotiate, a hard line independent of project-level approval.
 
 ## Summary
 

@@ -507,6 +507,8 @@ export const auditActions = [
   'mcp.retrieved',
   'mcp.proposed',
   'mcp.client_created',
+  /** A person approved an AI tool on the consent screen, granting it a token. */
+  'mcp.oauth_granted',
   'mcp.client_revoked',
   'workspace.deletion_requested',
   'workspace.deleted',

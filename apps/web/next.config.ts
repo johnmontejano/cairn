@@ -61,6 +61,37 @@ const config: NextConfig = {
   // Browser tests and local tooling reach the dev server by address rather than
   // by name; without this the dev server refuses their server-action requests.
   allowedDevOrigins: ['127.0.0.1', 'localhost'],
+  /**
+   * Discovery documents live at fixed `.well-known` paths the specification
+   * fixes, but a route folder whose name begins with a dot is not something to
+   * rely on across Next versions. Serving them from ordinary route handlers and
+   * rewriting keeps the public URLs exactly right without depending on that.
+   *
+   * The `:path*` variants matter: RFC 9728 lets a client append the resource's
+   * own path to the well-known prefix, so a client asking about `/api/mcp`
+   * requests `/.well-known/oauth-protected-resource/api/mcp`. Serving only the
+   * bare path answers 404 to a correct client.
+   */
+  async rewrites() {
+    return [
+      {
+        source: '/.well-known/oauth-protected-resource',
+        destination: '/api/oauth/protected-resource',
+      },
+      {
+        source: '/.well-known/oauth-protected-resource/:path*',
+        destination: '/api/oauth/protected-resource',
+      },
+      {
+        source: '/.well-known/oauth-authorization-server',
+        destination: '/api/oauth/authorization-server',
+      },
+      {
+        source: '/.well-known/oauth-authorization-server/:path*',
+        destination: '/api/oauth/authorization-server',
+      },
+    ];
+  },
   async headers() {
     return [
       {

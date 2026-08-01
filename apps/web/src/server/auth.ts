@@ -1,4 +1,4 @@
-import { randomBytes, randomInt, randomUUID } from 'node:crypto';
+import { createHmac, randomBytes, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
 import { and, eq, gt, isNull, sql } from 'drizzle-orm';
 import { type AppConfig, getConfig } from '@cairn/config';
 import { sha256Hex } from '@cairn/crypto';
@@ -94,11 +94,20 @@ export class WorkOsAuthProvider implements AuthProvider {
     return url.toString();
   }
 
-  async startEmailSignIn(email: string): Promise<AuthStartResult> {
+  // `email` isn't used for `state` (see the CSRF note on `completeOAuth` in
+  // ports.ts) — WorkOS's own hosted page collects the email itself. It stays
+  // a required parameter to satisfy `AuthProvider`, which `LocalAuthProvider`
+  // does need it for.
+  async startEmailSignIn(_email: string): Promise<AuthStartResult> {
+    const state = randomBytes(24).toString('base64url');
     return {
       kind: 'redirect',
-      challengeId: email,
-      url: this.authorizeUrl('authkit', Buffer.from(email).toString('base64url')),
+      // Repurposed to carry the nonce the caller must stash in
+      // `OAUTH_STATE_COOKIE` before redirecting — there is no challenge row
+      // to look up for a hosted-redirect flow, so this field just carries
+      // whatever the caller needs to complete the round trip.
+      challengeId: state,
+      url: this.authorizeUrl('authkit', state),
     };
   }
 
@@ -174,23 +183,36 @@ async function consumeChallenge(handle: DbHandle, challengeId: string, code: str
   });
 }
 
+export interface WorkOsConfig {
+  apiKey: string;
+  clientId: string;
+  redirectUri: string;
+}
+
+/**
+ * Mirrors `googleOAuthConfig()` in `packages/connectors/src/google.ts`: one
+ * place that knows which three env vars make WorkOS usable, reused by
+ * `createAuthProvider` instead of each caller re-deriving its own "is WorkOS
+ * configured" check.
+ */
+export function workosConfig(config: AppConfig = getConfig()): WorkOsConfig | null {
+  const { env } = config;
+  if (!env.WORKOS_API_KEY || !env.WORKOS_CLIENT_ID || !env.WORKOS_REDIRECT_URI) return null;
+  return {
+    apiKey: env.WORKOS_API_KEY,
+    clientId: env.WORKOS_CLIENT_ID,
+    redirectUri: env.WORKOS_REDIRECT_URI,
+  };
+}
+
 export function createAuthProvider(
   handle: DbHandle,
   config: AppConfig = getConfig(),
   announce: (email: string, code: string) => void = defaultAnnounce,
 ): AuthProvider {
-  const { env } = config;
-  if (
-    env.AUTH_PROVIDER === 'workos' &&
-    env.WORKOS_API_KEY &&
-    env.WORKOS_CLIENT_ID &&
-    env.WORKOS_REDIRECT_URI
-  ) {
-    return new WorkOsAuthProvider({
-      apiKey: env.WORKOS_API_KEY,
-      clientId: env.WORKOS_CLIENT_ID,
-      redirectUri: env.WORKOS_REDIRECT_URI,
-    });
+  if (config.env.AUTH_PROVIDER === 'workos') {
+    const options = workosConfig(config);
+    if (options) return new WorkOsAuthProvider(options);
   }
   return new LocalAuthProvider(handle, announce);
 }
@@ -210,7 +232,92 @@ function defaultAnnounce(email: string, code: string): void {
 
 export const SESSION_COOKIE = 'cairn_session';
 export const CSRF_COOKIE = 'cairn_csrf';
+/**
+ * Holds the nonce from `WorkOsAuthProvider.startEmailSignIn` between the
+ * redirect to WorkOS and the callback. Short-lived and single-use — the
+ * callback route deletes it whether the round trip succeeds or not.
+ */
+export const OAUTH_STATE_COOKIE = 'cairn_oauth_state';
+export const OAUTH_STATE_TTL_MS = 10 * 60_000;
+/**
+ * Where to land after signing in, when it is not the usual place.
+ *
+ * Someone who clicked "connect" inside Claude and turned out to be signed out
+ * must come back to the consent screen, not to the home page having forgotten
+ * why they started. Set immediately before leaving for the identity provider
+ * and deleted on the way back.
+ */
+export const AFTER_SIGNIN_COOKIE = 'cairn_after_signin';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60_000;
+
+/**
+ * Narrows a return path to somewhere on this site.
+ *
+ * A redirect target taken from a query parameter is an open redirector unless
+ * something refuses absolute URLs, protocol-relative ones, and anything that is
+ * not a plain rooted path. Returns `null` for everything else, and callers fall
+ * back to their normal destination — a failure here should be a boring landing,
+ * never a redirect somewhere unexpected.
+ */
+export function safeReturnPath(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  if (!raw.startsWith('/')) return null;
+  // `//evil.example` and `/\evil.example` are both read as protocol-relative
+  // absolute URLs by browsers, so a leading-slash test alone is not enough.
+  if (raw.startsWith('//') || raw.startsWith('/\\')) return null;
+  if (raw.length > 512) return null;
+  return raw;
+}
+
+/**
+ * True only when the WorkOS callback's `state` query param exactly matches
+ * the nonce stashed in `OAUTH_STATE_COOKIE` before the redirect — a missing
+ * cookie, a missing query param, or any mismatch fails closed. Pulled out as
+ * its own function so the check is unit-testable independent of the route
+ * handler's `next/headers` plumbing.
+ */
+export function validOAuthState(
+  cookieValue: string | undefined,
+  queryValue: string | null,
+): boolean {
+  return Boolean(cookieValue) && Boolean(queryValue) && cookieValue === queryValue;
+}
+
+/**
+ * Signs the session token for cookie transport with `CAIRN_SESSION_SECRET`,
+ * independent of the hash already stored in `sessions.token_hash`. A leaked
+ * database row alone is then not enough to forge a session — the secret
+ * lives only in server env, never in Postgres. If no secret is configured
+ * (fixture/local mode, where it's optional), the token travels unsigned, as
+ * it always has.
+ */
+export function signSessionToken(token: string, secret: string | undefined): string {
+  if (!secret) return token;
+  const signature = createHmac('sha256', secret).update(token).digest('base64url');
+  return `${token}.${signature}`;
+}
+
+/**
+ * Inverse of `signSessionToken`. Returns the raw token to look up if the
+ * signature checks out (or if no secret is configured, matching the
+ * unsigned case), and `null` otherwise — including when a secret is
+ * configured but the cookie predates it, which forces a one-time re-login
+ * rather than silently trusting an unsigned value.
+ */
+export function verifySessionToken(
+  cookieValue: string | undefined,
+  secret: string | undefined,
+): string | null {
+  if (!cookieValue) return null;
+  if (!secret) return cookieValue;
+  const separator = cookieValue.lastIndexOf('.');
+  if (separator < 0) return null;
+  const token = cookieValue.slice(0, separator);
+  const signature = Buffer.from(cookieValue.slice(separator + 1));
+  const expected = Buffer.from(createHmac('sha256', secret).update(token).digest('base64url'));
+  if (signature.length !== expected.length || !timingSafeEqual(signature, expected)) return null;
+  return token;
+}
 
 export interface CreatedSession {
   token: string;

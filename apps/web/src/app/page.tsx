@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PRODUCT } from '@cairn/config';
 import { Callout, SkipLink } from '@cairn/ui';
@@ -6,6 +7,7 @@ import { Wordmark } from '@/components/chrome';
 import { SignInFlow } from '@/components/forms';
 import { HeroArt } from '@/components/hero-art';
 import { continueSignIn, hasSession } from '@/server/actions';
+import { safeReturnPath } from '@/server/auth';
 
 // Reads the session cookie and the live provider configuration, so it must be
 // rendered per request rather than baked into the build.
@@ -44,11 +46,14 @@ const PILLARS = [
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ deleted?: string; error?: string }>;
+  searchParams: Promise<{ deleted?: string; error?: string; next?: string }>;
 }) {
-  if (await hasSession()) redirect('/home');
-  const services = await getServices();
   const params = await searchParams;
+  // `next` is how a consent screen sends someone here and gets them back. It is
+  // narrowed to a path on this site before it is used or echoed into the form.
+  const returnTo = safeReturnPath(params.next ?? null);
+  if (await hasSession()) redirect(returnTo ?? '/home');
+  const services = await getServices();
   const demoMode = services.config.providers.auth.state !== 'ready';
 
   return (
@@ -96,7 +101,7 @@ export default async function SignInPage({
 
               <div className="cairn-hero__card">
                 <h2 className="cairn-hero__card-title">Sign in</h2>
-                <SignInFlow action={continueSignIn} demoMode={demoMode} />
+                <SignInFlow action={continueSignIn} demoMode={demoMode} next={returnTo} />
               </div>
 
               <p className="cairn-hero__note">
@@ -189,7 +194,7 @@ export default async function SignInPage({
                 : 'Your memory is private to your account.'}
             </span>
             <span>
-              {PRODUCT.name} — {PRODUCT.tagline}
+              {PRODUCT.name} — {PRODUCT.tagline} · <Link href="/privacy">Privacy</Link>
             </span>
           </footer>
         </div>

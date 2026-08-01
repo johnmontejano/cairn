@@ -21,12 +21,14 @@ import {
   CONNECTOR_DESCRIPTIONS,
   PIPEDREAM_APPS,
 } from '@cairn/connectors';
+import { callbackUrl, validateAuthorizationRequest } from './oauth-request';
 import {
   auditRepo,
   clientsRepo,
   deletionRepo,
   jobsRepo,
   memoryRepo,
+  oauthRepo,
   schema,
   sourcesRepo,
   usageRepo,
@@ -54,11 +56,17 @@ import { IDENTITY_MAX_CHARS, indexMemoryItems } from '@cairn/search';
 import { restoreBackup } from '@cairn/vault';
 import {
   CSRF_COOKIE,
+  AFTER_SIGNIN_COOKIE,
+  OAUTH_STATE_COOKIE,
+  OAUTH_STATE_TTL_MS,
+  safeReturnPath,
   SESSION_COOKIE,
   createAuthProvider,
   resolveSession,
   revokeSession,
   signInUser,
+  signSessionToken,
+  verifySessionToken,
 } from './auth';
 import {
   assertCsrf,
@@ -133,6 +141,10 @@ export async function continueSignIn(
   return guard(async () => {
     const services = await getServices();
     const challengeId = String(formData.get('challengeId') ?? '').trim();
+    // Carried through both branches: the hosted-page round trip stores it in a
+    // cookie for the callback route, and the email-code branch reads it back at
+    // the end of this same action.
+    const returnTo = safeReturnPath(String(formData.get('next') ?? '') || null);
 
     if (challengeId.length === 0) {
       const email = String(formData.get('email') ?? '')
@@ -148,7 +160,14 @@ export async function continueSignIn(
 
       const provider = createAuthProvider(services.handle, services.config);
       const started = await provider.startEmailSignIn(email);
-      if (started.kind === 'redirect' && started.url) redirect(started.url);
+      if (started.kind === 'redirect' && started.url) {
+        // `challengeId` carries the state nonce for this branch — see the
+        // comment on `WorkOsAuthProvider.startEmailSignIn`. Stashed here so
+        // the callback route can reject a forged or replayed `state`.
+        await setOAuthStateCookie(started.challengeId);
+        await setAfterSignInCookie(returnTo);
+        redirect(started.url);
+      }
 
       return {
         ok: true,
@@ -181,14 +200,18 @@ export async function continueSignIn(
       }
       throw error;
     }
-    redirect('/welcome');
+    redirect(returnTo ?? '/welcome');
   });
 }
 
 export async function signOut(): Promise<void> {
   const services = await getServices();
   const jar = await cookies();
-  await revokeSession(services.handle, jar.get(SESSION_COOKIE)?.value);
+  const token = verifySessionToken(
+    jar.get(SESSION_COOKIE)?.value,
+    services.config.env.CAIRN_SESSION_SECRET,
+  );
+  if (token) await revokeSession(services.handle, token);
   jar.delete(SESSION_COOKIE);
   jar.delete(CSRF_COOKIE);
   redirect('/');
@@ -198,7 +221,7 @@ async function setSessionCookies(token: string, csrf: string, expiresAt: Date): 
   const services = await getServices();
   const secure = services.config.appUrl.startsWith('https://');
   const jar = await cookies();
-  jar.set(SESSION_COOKIE, token, {
+  jar.set(SESSION_COOKIE, signSessionToken(token, services.config.env.CAIRN_SESSION_SECRET), {
     httpOnly: true,
     secure,
     sameSite: 'lax',
@@ -213,6 +236,34 @@ async function setSessionCookies(token: string, csrf: string, expiresAt: Date): 
     sameSite: 'strict',
     path: '/',
     expires: expiresAt,
+  });
+}
+
+async function setOAuthStateCookie(state: string): Promise<void> {
+  const services = await getServices();
+  const secure = services.config.appUrl.startsWith('https://');
+  const jar = await cookies();
+  jar.set(OAUTH_STATE_COOKIE, state, {
+    httpOnly: true,
+    secure,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: OAUTH_STATE_TTL_MS / 1000,
+  });
+}
+
+/** Remembers where to land after signing in, when it is not `/welcome`. */
+async function setAfterSignInCookie(path: string | null): Promise<void> {
+  if (!path) return;
+  const services = await getServices();
+  const secure = services.config.appUrl.startsWith('https://');
+  const jar = await cookies();
+  jar.set(AFTER_SIGNIN_COOKIE, path, {
+    httpOnly: true,
+    secure,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: OAUTH_STATE_TTL_MS / 1000,
   });
 }
 
@@ -833,6 +884,130 @@ export async function createConnectedAi(
   });
 }
 
+/**
+ * Approving an AI tool's connection request.
+ *
+ * The whole authorization request is re-read from the form and re-validated
+ * against the database rather than trusted as submitted. The page already
+ * validated it once to decide what to show, but a form is a thing a caller
+ * controls, and "it was checked when we rendered it" is not a check.
+ *
+ * On approval this creates an ordinary `mcp_clients` row — the same kind the
+ * connection-code path creates — so listing, revoking and auditing a connection
+ * work identically whichever way it was made. There is exactly one notion of a
+ * connected AI in this product, and one place to turn it off.
+ */
+export async function approveAiConnection(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  return guard(async () => {
+    await assertCsrf(formData);
+    const context = await requireContext();
+
+    const params = new URLSearchParams(String(formData.get('request') ?? ''));
+    const includeSensitive = formData.get('includeSensitive') === 'on';
+
+    const outcome = await withTenant(context.services.handle, context.actor, async (tx) => {
+      const validated = await validateAuthorizationRequest(tx, params);
+      if (validated.kind === 'show') {
+        return { error: `${validated.title}. ${validated.detail}` } as const;
+      }
+      if (validated.kind === 'redirect') {
+        return {
+          to: callbackUrl(validated.redirectUri, {
+            error: validated.error,
+            error_description: validated.description,
+            state: validated.state,
+          }),
+        } as const;
+      }
+
+      const { request } = validated;
+      const { client } = await clientsRepo.createMcpClient(tx, {
+        workspaceId: context.actor.workspaceId,
+        name: request.client.clientName,
+        scopes: request.scopes,
+        projectIds: null,
+        maxSensitivity: includeSensitive ? 'sensitive' : 'normal',
+      });
+
+      await tx
+        .update(schema.mcpClients)
+        .set({ oauthClientId: request.client.clientId })
+        .where(
+          and(
+            eq(schema.mcpClients.workspaceId, context.actor.workspaceId),
+            eq(schema.mcpClients.id, client.id),
+          ),
+        );
+
+      const { code } = await oauthRepo.createAuthorizationCode(tx, {
+        workspaceId: context.actor.workspaceId,
+        oauthClientId: request.client.clientId,
+        mcpClientId: client.id,
+        redirectUri: request.redirectUri,
+        codeChallenge: request.codeChallenge,
+        scopes: request.scopes,
+        resource: request.resource,
+        grantedBy: context.actor.userId,
+      });
+
+      await auditRepo.recordAudit(tx, {
+        workspaceId: context.actor.workspaceId,
+        actorUserId: context.actor.userId,
+        action: 'mcp.oauth_granted',
+        subjectType: 'mcp_client',
+        subjectId: client.id,
+        metadata: {
+          oauthClientId: request.client.clientId,
+          name: request.client.clientName,
+          scopes: request.scopes,
+        },
+      });
+
+      return {
+        to: callbackUrl(request.redirectUri, { code, state: request.state }),
+      } as const;
+    });
+
+    if ('error' in outcome) return { error: outcome.error };
+    revalidatePath('/connections');
+    redirect(outcome.to);
+  });
+}
+
+/** Refusing the request, told to the client rather than left to time out. */
+export async function denyAiConnection(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  return guard(async () => {
+    await assertCsrf(formData);
+    const context = await requireContext();
+    const params = new URLSearchParams(String(formData.get('request') ?? ''));
+
+    const outcome = await withTenant(context.services.handle, context.actor, async (tx) => {
+      const validated = await validateAuthorizationRequest(tx, params);
+      // A request too malformed to redirect anywhere is simply dropped; there
+      // is no verified address to report the refusal to.
+      if (validated.kind === 'show') return null;
+      const target =
+        validated.kind === 'redirect'
+          ? { uri: validated.redirectUri, state: validated.state }
+          : { uri: validated.request.redirectUri, state: validated.request.state };
+      return callbackUrl(target.uri, {
+        error: 'access_denied',
+        error_description: 'The person declined this connection.',
+        state: target.state,
+      });
+    });
+
+    if (!outcome) return { error: 'That connection request was not valid.' };
+    redirect(outcome);
+  });
+}
+
 export async function revokeConnectedAi(
   _prev: ActionResult,
   formData: FormData,
@@ -843,6 +1018,12 @@ export async function revokeConnectedAi(
     const clientId = String(formData.get('clientId') ?? '');
     await withTenant(context.services.handle, context.actor, async (tx) => {
       await clientsRepo.revokeMcpClient(tx, context.actor.workspaceId, clientId);
+      // Access tokens outlive a revocation by up to an hour otherwise. The
+      // token lookup already joins to this row and would refuse it, but killing
+      // the tokens outright means revocation does not depend on that join
+      // staying correct — someone turning a connection off is entitled to have
+      // it stop, not to have it stop provided one query is written a certain way.
+      await oauthRepo.revokeTokensForMcpClient(tx, context.actor.workspaceId, clientId);
       await auditRepo.recordAudit(tx, {
         workspaceId: context.actor.workspaceId,
         actorUserId: context.actor.userId,
@@ -852,7 +1033,7 @@ export async function revokeConnectedAi(
       });
     });
     revalidatePath('/connections');
-    return { ok: true, message: 'Turned off. That code stops working immediately.' };
+    return { ok: true, message: 'Turned off. It stops working immediately.' };
   });
 }
 
@@ -1057,5 +1238,10 @@ function crypto_randomUUID(): string {
 export async function hasSession(): Promise<boolean> {
   const services = await getServices();
   const jar = await cookies();
-  return (await resolveSession(services.handle, jar.get(SESSION_COOKIE)?.value)) !== null;
+  const token = verifySessionToken(
+    jar.get(SESSION_COOKIE)?.value,
+    services.config.env.CAIRN_SESSION_SECRET,
+  );
+  if (!token) return false;
+  return (await resolveSession(services.handle, token)) !== null;
 }

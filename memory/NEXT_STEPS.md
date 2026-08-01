@@ -36,9 +36,11 @@ credential from the user; none of it should be done without explicit approval.
 6. ~~**Deploy the website.**~~ Done on 2026-07-28. Live at
    <https://cairn-web-beta.vercel.app> with `/api/health` green. See
    `CURRENT_STATE.md`.
-7. **Enable remote MCP OAuth.** Last, because it is the one path never exercised
-   against a live issuer. Verify current official guidance first; connection codes
-   remain the tested alternative.
+7. ~~**Enable remote MCP OAuth.**~~ Built and verified end to end on 2026-08-01.
+   Cairn is now its own OAuth 2.1 authorization server; the previous design
+   could not have worked against any issuer. See `docs/REMOTE_MCP_OAUTH.md` and
+   `CURRENT_STATE.md`. **One user step remains:** apply migration `0008`, then
+   set `MCP_AUTH_MODE=oauth` in Vercel and redeploy. No new secret is needed.
 
 ## Immediate
 
@@ -69,13 +71,12 @@ Production requires Google's verification process for sensitive scopes
 and to require a privacy policy URL, which ties into the retention/deletion
 policy still listed as an open question below.
 
-0v. **Verify a real sync end to end.** A connected Gmail account exists
-(`state='active'`, real credential) but no `connection.sync` job has been
-confirmed to actually pull messages into memory yet. Trigger one, read what
-lands in Memory, and confirm the extractor handles a real email's shape
-(headers, quoted-reply chains, HTML-only messages with no plain-text part —
-`extractPlainText` in `gmail.ts` falls back to `'(no plain-text body)'` for
-those, which is honest but worth seeing happen at least once on purpose).
+0v. ~~**Verify a real sync end to end.**~~ Done 2026-08-01. Both bugs found
+while verifying (Google API disabled; wrong-format Supabase key) are fixed —
+see `CURRENT_STATE.md`. A real "Check for updates" click against production
+pulled actual Gmail messages: Gmail shows "Connected — Checked just now,"
+and Memory holds 49 real extracted candidates (not fixture data). Confirmed
+by the agent directly in the browser, not just by reading logs.
 
 0a. ~~**Add an identity editor to Settings.**~~ Done on 2026-07-31 (commit
 `8566024`). The form starts from the derived summary so editing begins from
@@ -95,11 +96,18 @@ automatic.
    <https://supabase.com/dashboard/account/tokens> and issue a replacement only
    if something still needs one — nothing in the current config does. This is
    distinct from the database password whose rotation was declined on 2026-07-29.
-2. **Set up WorkOS AuthKit** and switch `AUTH_PROVIDER` from `fixture` to
-   `workos`. Redirect URI:
-   `https://cairn-web-beta.vercel.app/api/oauth/workos/callback`. Until this is
-   done the landing page shows demo-mode copy that is untrue of a hosted
-   deployment, and sign-in codes go to the Vercel log rather than to email.
+2. ~~**Set `AUTH_PROVIDER=workos` and the WorkOS/session env vars in Vercel,
+   then redeploy.**~~ Env vars set by the user 2026-08-01, redeployed, and
+   confirmed live: the demo-mode copy is gone from the production sign-in
+   page (`providers.auth.state` only reports `'ready'` when the switch has
+   actually taken effect). Code-side hardening (OAuth state/CSRF check,
+   session-cookie signing) verified earlier via `pnpm verify` and
+   `pnpm test:e2e`. **Not personally completed by the agent:** an actual
+   end-to-end stranger sign-up (WorkOS hosted page → email/magic-link
+   verification → landing on a fresh isolated workspace) — that needs an
+   inbox to receive a code, which the agent doesn't have access to. The
+   config-level confirmation is strong, but a real walkthrough with a real
+   inbox is the one piece still unverified firsthand.
 
 Rotating the database password was offered and declined on 2026-07-29; see the
 accepted risk in `CURRENT_STATE.md`. Do not re-raise it as a task, but do rotate
@@ -107,14 +115,47 @@ before storing anyone else's data.
 
 ## Before anyone else's data goes in
 
-- Decide the retention period and deletion policy, then state them in a privacy
-  policy that names every processor in `docs/PRIVACY_MATRIX.md`.
-- Decide whether to encrypt the embedding table and accept slower search, or to
-  isolate it.
-- Take a backup, verify it, and restore it into a scratch workspace. The test
-  proves the mechanism; do it once by hand anyway.
+- **Make the five retention/deletion calls** in `docs/RETENTION_DECISIONS.md`,
+  fill the `[DECIDE: …]` markers in `docs/PRIVACY_POLICY.md`, publish it at a
+  stable URL on the app's own domain, and record the choices in `DECISIONS.md`.
+  Do not implement enforcement before deciding — a written retention rule that
+  nothing enforces is a false claim. Decision 5 subsumes the old "encrypt the
+  embedding table or isolate it" item.
+- ~~Take a backup, verify it, and restore it into a scratch workspace.~~ Done by
+  hand on 2026-08-01, through the real interface, into a genuinely different
+  account. See `CURRENT_STATE.md`. Kept as `tests/e2e/recovery.spec.ts`.
 - Set spend caps at every vendor, not only in Settings.
-- Consider an independent security review.
+- Consider an independent security review. Note this may not be optional:
+  Google's restricted-scope review can require one.
+
+## Onboarding gaps worth closing next
+
+From `docs/ONBOARDING_BENCHMARK.md`, in the order that loses the fewest people.
+Gap A is closed by the OAuth work; these are the rest, with proposals already
+written against Cairn's existing components.
+
+- **B — waiting is unbounded and needs a manual refresh.** `/welcome` says
+  "Refresh this page in a moment." Auto-refresh while `runningJobs > 0` and show
+  candidates as they land. Small, and it sits at the exact moment the product
+  has taken something and given nothing back.
+- **D — `/home` leads with counts, not with what Cairn knows about you.**
+  `assembleIdentity()` already builds the summary and Settings already edits it;
+  it is simply not on the page people land on. Small.
+- **F — providers that cannot work on this deployment are still offered** with
+  an "Add in demo form" button. Small.
+- **G — nothing invites connecting an AI once there is memory worth connecting.**
+  Promote it to a single primary call to action once `approvedCount` crosses a
+  threshold, and retire it once a connection exists. Small.
+- **C — 49 candidates from one Gmail sync, each needing its own decision.**
+  Group the review queue by source with "Keep all from this source", excluding
+  anything conflicted or sensitive. A day.
+- **E — scope is per-connection, not per-content.** Let a connection choose
+  which memory types it may read; `mcp_clients.projectIds` already exists and is
+  always written `null`. A day.
+
+Also open, found during the backup drill: `/home`'s `approvedCount` and what the
+vault backs up appear to count different things — the source said "1 thing
+saved" while the backup held and restored 2 memories.
 
 ## Open questions
 

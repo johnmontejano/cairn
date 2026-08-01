@@ -10,7 +10,7 @@ import {
   RateLimitedError,
 } from '@cairn/domain';
 import { type CairnServices, drainJobs, getServices } from '@cairn/ingestion';
-import { CSRF_COOKIE, SESSION_COOKIE, resolveSession } from './auth';
+import { CSRF_COOKIE, SESSION_COOKIE, resolveSession, verifySessionToken } from './auth';
 
 /**
  * Request context.
@@ -33,7 +33,11 @@ export interface RequestContext {
 export async function currentContext(): Promise<RequestContext | null> {
   const services = await getServices();
   const jar = await cookies();
-  const session = await resolveSession(services.handle, jar.get(SESSION_COOKIE)?.value);
+  const token = verifySessionToken(
+    jar.get(SESSION_COOKIE)?.value,
+    services.config.env.CAIRN_SESSION_SECRET,
+  );
+  const session = token ? await resolveSession(services.handle, token) : null;
   if (!session) return null;
 
   const role = await workspacesRepo.resolveMembership(

@@ -47,6 +47,11 @@ export default defineConfig({
       CAIRN_APP_URL: BASE_URL,
       AUTH_PROVIDER: 'fixture',
       AI_PROVIDER: 'fixture',
+      // The intended production configuration, so the browser suite exercises
+      // the path people will actually use. Connection codes still work in this
+      // mode and are still covered; what changes is that pasting an address
+      // becomes the primary route and gets a real round-trip test.
+      MCP_AUTH_MODE: 'oauth',
       NODE_ENV: 'development',
       LOG_LEVEL: 'warn',
     },

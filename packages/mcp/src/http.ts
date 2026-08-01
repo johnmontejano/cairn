@@ -2,7 +2,8 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { getConfig } from '@cairn/config';
 import { DomainError } from '@cairn/domain';
 import type { CairnServices } from '@cairn/ingestion';
-import { McpAuthenticator, wwwAuthenticateHeader } from './auth';
+import { InsufficientScopeError, McpAuthenticator, wwwAuthenticateHeader } from './auth';
+import { wwwAuthenticateChallenge } from './metadata';
 import { createMcpServer } from './server';
 
 /**
@@ -33,6 +34,20 @@ export async function handleMcpRequest(
   try {
     auth = await new McpAuthenticator(services.handle, config).authenticate(token);
   } catch (error) {
+    // A token that is valid but too narrow is a different answer from one that
+    // is not valid at all. Returning 401 for both makes a client throw away a
+    // working token and re-run the whole flow, only to be refused again for the
+    // same reason; 403 with the scope it needs lets it ask for exactly that.
+    if (error instanceof InsufficientScopeError) {
+      services.logger.warn('mcp.insufficient_scope', { scope: error.requiredScope });
+      return jsonRpcError(403, -32002, 'Insufficient scope', {
+        'www-authenticate': wwwAuthenticateChallenge(config, {
+          error: 'insufficient_scope',
+          scope: [error.requiredScope],
+          description: error.userMessage,
+        }),
+      });
+    }
     services.logger.warn('mcp.unauthorized', { reason: (error as Error).message });
     return jsonRpcError(401, -32001, 'Unauthorized', {
       'www-authenticate': wwwAuthenticateHeader(config),

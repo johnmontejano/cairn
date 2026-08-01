@@ -140,7 +140,16 @@ export function CopyableCode({ value, label = 'Copy' }: { value: string; label?:
  * Sign in
  * ------------------------------------------------------------------ */
 
-export function SignInFlow({ action, demoMode }: { action: ActionFn; demoMode: boolean }) {
+export function SignInFlow({
+  action,
+  demoMode,
+  next,
+}: {
+  action: ActionFn;
+  demoMode: boolean;
+  /** Where to land afterwards, when sign-in interrupted something else. */
+  next?: string | null;
+}) {
   const [state, formAction] = useActionState<ActionResult, FormData>(action, { stage: 'email' });
   const emailId = useId();
   const codeId = useId();
@@ -148,6 +157,9 @@ export function SignInFlow({ action, demoMode }: { action: ActionFn; demoMode: b
 
   return (
     <form action={formAction} className="cairn-stack cairn-stack--md">
+      {/* Outside the step branches so it survives the email → code transition,
+          which re-renders this form with different fields. */}
+      {next ? <input type="hidden" name="next" value={next} /> : null}
       {onCodeStep ? (
         <>
           <input type="hidden" name="challengeId" value={state.id ?? ''} />

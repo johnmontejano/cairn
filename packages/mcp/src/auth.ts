@@ -1,14 +1,16 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { type AppConfig, getConfig } from '@cairn/config';
 import { sha256Hex } from '@cairn/crypto';
-import { type DbHandle, clientsRepo, withSystem } from '@cairn/db';
+import { type DbHandle, clientsRepo, oauthRepo, withSystem } from '@cairn/db';
 import {
   type ActorContext,
   type McpScope,
   type SensitivityLevel,
+  DomainError,
   UnauthorizedError,
   mcpScopes,
 } from '@cairn/domain';
+import { mcpResourceUri, wwwAuthenticateChallenge } from './metadata';
 
 /**
  * Who is calling, and what are they allowed to see.
@@ -24,6 +26,27 @@ export interface McpAuthResult {
   clientId: string;
   clientName: string;
   scopes: McpScope[];
+}
+
+/**
+ * A valid token that is not permitted to do this.
+ *
+ * Distinct from `UnauthorizedError` on purpose: the specification asks for 403
+ * with `error="insufficient_scope"` here, not 401. The difference is not
+ * pedantry — a client meeting a 401 discards its token and starts the whole
+ * authorization flow again, whereas a 403 with a `scope` parameter tells it
+ * exactly which additional permission to ask for and lets it step up without
+ * losing what it already has.
+ */
+export class InsufficientScopeError extends DomainError {
+  constructor(readonly requiredScope: string) {
+    super(
+      `Token lacks scope ${requiredScope}`,
+      'insufficient_scope',
+      403,
+      'That AI tool has not been given permission for this.',
+    );
+  }
 }
 
 export class McpAuthenticator {
@@ -49,9 +72,54 @@ export class McpAuthenticator {
 
   async authenticate(token: string | null): Promise<McpAuthResult> {
     if (!token) throw new UnauthorizedError('No bearer token presented');
-    return this.config.env.MCP_AUTH_MODE === 'oauth'
-      ? this.authenticateOauth(token)
-      : this.authenticateLocal(token);
+    if (this.config.env.MCP_AUTH_MODE !== 'oauth') return this.authenticateLocal(token);
+
+    // Cairn-issued tokens are self-identifying by prefix, so the common path
+    // costs one indexed lookup and never touches the network. An external
+    // issuer, if one is configured, is tried only for tokens that are not ours.
+    if (token.startsWith(oauthRepo.tokenPrefixes.access)) return this.authenticateIssued(token);
+    if (this.config.env.MCP_OAUTH_ISSUER) return this.authenticateExternal(token);
+    throw new UnauthorizedError('That access token is not valid');
+  }
+
+  /**
+   * Tokens Cairn issued itself.
+   *
+   * The audience check the specification requires is a string comparison
+   * against the resource recorded when the token was minted, rather than a
+   * claim parsed out of a JWT. A token bound to a different resource is refused
+   * even though its hash matched — which is the whole point of RFC 8707, and
+   * the step whose omission lets a token for one service be replayed at
+   * another.
+   */
+  private async authenticateIssued(token: string): Promise<McpAuthResult> {
+    const resolved = await withSystem(this.handle, (tx) => oauthRepo.findAccessToken(tx, token));
+    if (!resolved) throw new UnauthorizedError('That access token is not valid or has expired');
+
+    if (resolved.resource !== mcpResourceUri(this.config)) {
+      throw new UnauthorizedError('That token was issued for a different resource');
+    }
+    if (resolved.scopes.length === 0) {
+      throw new InsufficientScopeError('memory:read');
+    }
+
+    return {
+      actor: {
+        userId: null,
+        workspaceId: resolved.workspaceId,
+        role: 'viewer',
+        client: {
+          id: resolved.mcpClientId,
+          name: resolved.clientName,
+          scopes: resolved.scopes,
+          projectIds: resolved.projectIds,
+          maxSensitivity: resolved.maxSensitivity,
+        },
+      },
+      clientId: resolved.mcpClientId,
+      clientName: resolved.clientName,
+      scopes: resolved.scopes,
+    };
   }
 
   /**
@@ -87,14 +155,19 @@ export class McpAuthenticator {
   }
 
   /**
-   * Production mode: OAuth 2.1 bearer tokens issued by the configured provider.
+   * Tokens from an external issuer, when one is configured.
+   *
+   * Retained rather than deleted because a deployment may want its own identity
+   * provider to be the authorization server. It requires `mcp_clients.subject`
+   * to have been populated by that provider's grant; nothing in Cairn's own
+   * flow writes it, so this path is inert unless deliberately wired up.
    *
    * Audience is checked explicitly. A token minted for a different resource is
    * rejected even if its signature is perfectly valid — that is the whole point
    * of RFC 8707 resource indicators, and skipping it is how a token for one
    * service gets replayed against another.
    */
-  private async authenticateOauth(token: string): Promise<McpAuthResult> {
+  private async authenticateExternal(token: string): Promise<McpAuthResult> {
     const { env } = this.config;
     if (!env.MCP_OAUTH_ISSUER || !env.MCP_OAUTH_JWKS_URL || !env.MCP_OAUTH_AUDIENCE) {
       throw new UnauthorizedError('OAuth is selected but not configured');
@@ -164,12 +237,16 @@ function parseScopes(raw: unknown): McpScope[] {
   return list.filter((s): s is McpScope => (mcpScopes as readonly string[]).includes(s));
 }
 
-/** The challenge sent with a 401, pointing a client at where to get a token. */
+/**
+ * The challenge sent with a 401, pointing a client at where to get a token.
+ *
+ * Delegates to `wwwAuthenticateChallenge`, which emits the `resource_metadata`
+ * parameter clients actually read. The previous version named the issuer
+ * directly through `authorization_uri`, which no client looks for, so discovery
+ * stopped dead at the first 401.
+ */
 export function wwwAuthenticateHeader(config: AppConfig = getConfig()): string {
-  if (config.env.MCP_AUTH_MODE === 'oauth' && config.env.MCP_OAUTH_ISSUER) {
-    return `Bearer realm="cairn", authorization_uri="${config.env.MCP_OAUTH_ISSUER}", resource="${config.env.MCP_OAUTH_AUDIENCE ?? config.appUrl}"`;
-  }
-  return 'Bearer realm="cairn", error="invalid_token", error_description="Use the connection code from Settings → Connected AIs"';
+  return wwwAuthenticateChallenge(config, { error: 'invalid_token' });
 }
 
 /** Exposed for tests: proves a stored token hash cannot be replayed as a token. */

@@ -281,11 +281,16 @@ export function buildConfig(source: NodeJS.ProcessEnv = process.env): AppConfig 
   });
   const openaiMissing = require_({ OPENAI_API_KEY: env.OPENAI_API_KEY });
   const localAiMissing = require_({ LOCAL_AI_BASE_URL: env.LOCAL_AI_BASE_URL });
-  const oauthMcpMissing = require_({
-    MCP_OAUTH_ISSUER: env.MCP_OAUTH_ISSUER,
-    MCP_OAUTH_JWKS_URL: env.MCP_OAUTH_JWKS_URL,
-    MCP_OAUTH_AUDIENCE: env.MCP_OAUTH_AUDIENCE,
-  });
+  // Cairn issues its own MCP access tokens, so `oauth` mode needs no external
+  // issuer configured. The three `MCP_OAUTH_*` variables now describe an
+  // optional *additional* issuer to accept tokens from; requiring them here
+  // would report a correctly configured deployment as broken.
+  const oauthMcpMissing = env.MCP_OAUTH_ISSUER
+    ? require_({
+        MCP_OAUTH_JWKS_URL: env.MCP_OAUTH_JWKS_URL,
+        MCP_OAUTH_AUDIENCE: env.MCP_OAUTH_AUDIENCE,
+      })
+    : [];
 
   const aiStatus: ProviderStatus =
     env.AI_PROVIDER === 'openai'
@@ -392,7 +397,9 @@ export function buildConfig(source: NodeJS.ProcessEnv = process.env): AppConfig 
           ? status(
               oauthMcpMissing.length === 0,
               oauthMcpMissing,
-              'OAuth 2.1 bearer tokens verified against the configured issuer',
+              env.MCP_OAUTH_ISSUER
+                ? 'OAuth 2.1, tokens issued here and accepted from the configured issuer'
+                : 'OAuth 2.1, tokens issued and verified here',
               'Local connection code. Only works from this computer.',
             )
           : {

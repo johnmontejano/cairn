@@ -118,9 +118,14 @@ export interface AuthProvider {
     code: string,
   ): Promise<{ email: string; externalId: string; displayName: string | null }>;
   startGoogleSignIn(state: string): Promise<AuthStartResult>;
+  /**
+   * `state` is not a parameter here: it is validated against a short-lived
+   * cookie set right before the redirect (see `OAUTH_STATE_COOKIE`), by the
+   * caller, before this is ever invoked — a provider has nothing to check it
+   * against.
+   */
   completeOAuth(
     code: string,
-    state: string,
   ): Promise<{ email: string; externalId: string; displayName: string | null }>;
 }
 
