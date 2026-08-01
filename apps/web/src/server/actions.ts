@@ -10,7 +10,10 @@ import {
   EXAMPLE_FOLLOW_UP,
   EXAMPLE_FOLLOW_UP_TITLE,
   createConnector,
+  createPipedreamConnectLink,
   fetchUrlSafely,
+  pipedreamConfig,
+  PIPEDREAM_APPS,
 } from '@cairn/connectors';
 import {
   auditRepo,
@@ -76,6 +79,12 @@ export interface ActionResult {
   /** Set when an action produces something shown once, like a connection code. */
   secret?: string;
   id?: string;
+  /**
+   * Where the person has to go to finish. Set when an action cannot complete on
+   * its own because authorising happens somewhere else, so the interface can
+   * hand them a link rather than claiming to be done.
+   */
+  handoffUrl?: string;
 }
 
 async function guard<T extends ActionResult>(run: () => Promise<T>): Promise<T | ActionResult> {
@@ -647,12 +656,33 @@ export async function connectSource(
       return connection.id;
     });
 
+    // Providers reached through Pipedream cannot be finished here: authorising
+    // happens between the person and the provider, and this process never sees
+    // the credential. So the record exists, and they are handed a link rather
+    // than told they are connected when they are not.
+    let handoffUrl: string | undefined;
+    const binding = PIPEDREAM_APPS[provider];
+    if (binding && status === 'ready') {
+      const pdConfig = pipedreamConfig(context.services.config);
+      if (pdConfig) {
+        const link = await createPipedreamConnectLink(pdConfig, {
+          // Stable per workspace, and opaque: anyone holding this could mint a
+          // link that attaches their account to this memory.
+          externalUserId: `cairn:${context.actor.workspaceId}`,
+          app: binding.app,
+        });
+        handoffUrl = link.url;
+      }
+    }
+
     revalidatePath('/sources');
     return {
       ok: true,
       id: connectionId,
-      message:
-        status === 'ready'
+      handoffUrl,
+      message: handoffUrl
+        ? `Open the link to sign in to ${connector?.displayName ?? provider}. Nothing is read until you do.`
+        : status === 'ready'
           ? 'Connected. Choose “Check for updates” to read it now.'
           : 'Added in demo form. Real access needs setup by whoever runs this app — see Settings.',
     };

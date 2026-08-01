@@ -87,6 +87,21 @@ export function ActionForm({
           <Callout tone={successTone} live="polite">
             {state.message}
             {state.secret ? <CopyableCode value={state.secret} /> : null}
+            {/* An action that cannot finish on its own says where to go next.
+                Opened in a new tab so the person does not lose this page, and
+                marked noopener because the destination is not ours. */}
+            {state.handoffUrl ? (
+              <div style={{ marginTop: '0.75rem' }}>
+                <a
+                  className="cairn-button cairn-button--primary"
+                  href={state.handoffUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Continue to sign in
+                </a>
+              </div>
+            ) : null}
           </Callout>
         </div>
       ) : null}

@@ -111,19 +111,66 @@ export function resetPipedreamToken(): void {
   cachedToken = null;
 }
 
+export interface ConnectLink {
+  /** Short-lived; the person has to finish before it expires. */
+  token: string;
+  url: string;
+  expiresAt: string | null;
+}
+
 /**
- * A one-click link the person opens to authorize an app.
+ * Mints the one-click link a person opens to authorise an app.
  *
- * Returned to the browser rather than followed here: the whole point is that
- * the credential exchange happens between the person and Pipedream, so no part
- * of this system is ever in a position to see it.
+ * Verified against the live API on 2026-07-31: the response carries
+ * `connect_link_url` already built, so it is used verbatim rather than
+ * reassembled here — a URL this system reconstructs is a URL this system can
+ * get subtly wrong.
+ *
+ * `externalUserId` is what keeps one Pipedream project serving every workspace
+ * without their accounts touching. It must be stable for a given workspace and
+ * must never be guessable from outside, because anyone holding it could mint a
+ * link that attaches an account to someone else's memory.
+ *
+ * The link is handed to the browser rather than followed here. The whole point
+ * is that the credential exchange happens between the person and Pipedream, so
+ * nothing in this process is ever in a position to see it.
  */
-export function pipedreamConnectUrl(input: { token: string; app: string }): string {
-  const url = new URL('https://pipedream.com/_static/connect.html');
-  url.searchParams.set('token', input.token);
-  url.searchParams.set('connectLink', 'true');
-  url.searchParams.set('app', input.app);
-  return url.toString();
+export async function createPipedreamConnectLink(
+  config: PipedreamConfig,
+  input: { externalUserId: string; app?: string },
+  fetchImpl: typeof fetch = fetch,
+): Promise<ConnectLink> {
+  const token = await pipedreamAccessToken(config, fetchImpl);
+  const res = await fetchImpl(
+    `https://api.pipedream.com/v1/connect/${encodeURIComponent(config.projectId)}/tokens`,
+    {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+        'x-pd-environment': config.environment,
+      },
+      body: JSON.stringify({ external_user_id: input.externalUserId }),
+    },
+  );
+  if (!res.ok) {
+    throw new ValidationError(
+      `Pipedream connect token failed (${res.status})`,
+      'That connection could not be started just now. Nothing was changed.',
+    );
+  }
+  const body = (await res.json()) as {
+    token: string;
+    connect_link_url: string;
+    expires_at?: string;
+  };
+
+  // Naming the app pre-selects it, so the person lands on the right consent
+  // screen instead of a chooser they did not ask for.
+  const url = new URL(body.connect_link_url);
+  if (input.app) url.searchParams.set('app', input.app);
+
+  return { token: body.token, url: url.toString(), expiresAt: body.expires_at ?? null };
 }
 
 interface JsonRpcResponse {
