@@ -515,6 +515,27 @@ export const workspaceSettings = pgTable('workspace_settings', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * Questions too slow to answer inside a request. See migration 0007.
+ *
+ * The question is encrypted as well as the answer: what someone asks often
+ * discloses more than what they are told.
+ */
+export const deepQueries = pgTable('deep_queries', {
+  id: uuid('id').notNull(),
+  workspaceId: uuid('workspace_id').notNull(),
+  projectId: uuid('project_id'),
+  state: text('state').notNull().default('pending'),
+  encryptedQuestion: bytea('encrypted_question').notNull(),
+  encryptedAnswer: bytea('encrypted_answer'),
+  evidenceCount: integer('evidence_count').notNull().default(0),
+  indexingPending: boolean('indexing_pending').notNull().default(false),
+  errorMessage: text('error_message'),
+  askedBy: uuid('asked_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  finishedAt: timestamp('finished_at', { withTimezone: true }),
+});
+
 export const rateLimits = pgTable('rate_limits', {
   key: text('key').primaryKey(),
   windowStart: timestamp('window_start', { withTimezone: true }).notNull(),

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray, ne } from 'drizzle-orm';
 import { contentHash } from '@cairn/crypto';
 import {
   auditRepo,
@@ -20,7 +20,12 @@ import {
   ValidationError,
   assertApprovable,
 } from '@cairn/domain';
-import { indexMemoryItems, rebuildProjectIndex } from '@cairn/search';
+import {
+  formatDeepAnswer,
+  indexMemoryItems,
+  rebuildProjectIndex,
+  searchMemory,
+} from '@cairn/search';
 import { createConnector } from '@cairn/connectors';
 import { chunkText } from './chunk';
 import { commitCanonicalMarkdown } from './canonical';
@@ -419,9 +424,160 @@ async function handleConnectionSync(services: CairnServices, job: Job): Promise<
   return { seen, imported, skipped };
 }
 
+/**
+ * Answers a question that was too slow to answer inside a request.
+ *
+ * Two things this does that the fast path does not.
+ *
+ * It records whether ingestion still had queued work when the answer was built,
+ * so the reader can be told the picture was incomplete rather than left to
+ * assume they saw everything. That flag is read at the moment of answering, not
+ * at the moment of asking — the queue may have drained in between, and claiming
+ * staleness that has since resolved is its own kind of wrong.
+ *
+ * And it fails into the row rather than out of the process. A deep query that
+ * throws leaves someone polling an id forever; a failed row tells them what
+ * happened and stops the polling.
+ */
+async function handleDeepQuery(services: CairnServices, job: Job): Promise<JobResult> {
+  const { deepQueryId } = job.payload as { deepQueryId: Uuid };
+  const actor = systemActor(job.workspaceId);
+  const crypto = await services.keyring.get(job.workspaceId);
+
+  const [row] = await withTenant(services.handle, actor, (tx) =>
+    tx
+      .select()
+      .from(schema.deepQueries)
+      .where(
+        and(
+          eq(schema.deepQueries.workspaceId, job.workspaceId),
+          eq(schema.deepQueries.id, deepQueryId),
+        ),
+      )
+      .limit(1),
+  );
+  if (!row) throw new ValidationError(`Deep query ${deepQueryId} no longer exists`);
+
+  const question = crypto.decryptContent(row.encryptedQuestion, 'deep_query', row.id);
+
+  try {
+    await withTenant(services.handle, actor, (tx) =>
+      tx
+        .update(schema.deepQueries)
+        .set({ state: 'running' })
+        .where(
+          and(
+            eq(schema.deepQueries.workspaceId, job.workspaceId),
+            eq(schema.deepQueries.id, deepQueryId),
+          ),
+        ),
+    );
+
+    const passages = await withTenant(services.handle, actor, (tx) =>
+      searchMemory({ tx, crypto, embedder: services.embedder }, actor, {
+        query: question,
+        projectId: row.projectId ?? undefined,
+        // Wider than the fast path on purpose: synthesis is the point here, and
+        // a handful of passages cannot support a claim about patterns.
+        limit: 40,
+      }),
+    );
+
+    const { answer } = await services.answerer.answer({ question, passages });
+
+    // Read now rather than at ask time: the queue may have drained since, and
+    // warning about staleness that has resolved is its own inaccuracy.
+    //
+    // This job is itself running, so it would count itself. Excluding by id is
+    // cheaper and less surprising than reasoning about an off-by-one later.
+    const queued = await withTenant(services.handle, actor, (tx) =>
+      tx
+        .select({ id: schema.jobs.id })
+        .from(schema.jobs)
+        .where(
+          and(
+            eq(schema.jobs.workspaceId, job.workspaceId),
+            inArray(schema.jobs.state, ['queued', 'running']),
+            ne(schema.jobs.id, job.id),
+          ),
+        ),
+    );
+    const stillWorking = queued.length;
+
+    const body =
+      answer.status === 'insufficient_evidence'
+        ? // `note` is optional on the type, and an empty body would print a
+          // heading over nothing rather than saying why there is no answer.
+          (answer.note ?? 'There is not enough saved here to answer that.')
+        : answer.statements.map((s) => s.text).join(' ');
+
+    const markdown = formatDeepAnswer({
+      question,
+      body,
+      citations: answer.citations.map((c) => ({
+        memoryItemId: c.memoryItemId,
+        // An excerpt is not guaranteed; the source title always is, so it is
+        // the safe label rather than an empty string.
+        title: c.excerpt ? c.excerpt.slice(0, 80) : c.sourceItemTitle,
+        sourceTitle: c.sourceItemTitle,
+        sourceProvider: c.sourceProvider,
+      })),
+      // The extractive answerer does not report what it could not support, so
+      // nothing is claimed here. An empty list still prints the section, which
+      // says "checked, nothing missing" — and that is only honest once a model
+      // that can actually judge is answering. Revisit with the model answerer.
+      unsupported: [],
+      indexingPending: stillWorking > 0,
+    });
+
+    await withTenant(services.handle, actor, (tx) =>
+      tx
+        .update(schema.deepQueries)
+        .set({
+          state: 'ready',
+          encryptedAnswer: crypto.encryptContent(markdown, 'deep_query', row.id),
+          evidenceCount: answer.citations.length,
+          indexingPending: stillWorking > 0,
+          finishedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(schema.deepQueries.workspaceId, job.workspaceId),
+            eq(schema.deepQueries.id, deepQueryId),
+          ),
+        ),
+    );
+
+    return { citations: answer.citations.length, indexingPending: stillWorking > 0 };
+  } catch (error) {
+    // Fail into the row. Throwing alone would leave someone polling an id that
+    // never resolves and never explains itself.
+    await withTenant(services.handle, actor, (tx) =>
+      tx
+        .update(schema.deepQueries)
+        .set({
+          state: 'failed',
+          errorMessage:
+            error instanceof DomainError
+              ? error.userMessage
+              : 'That question could not be answered just now.',
+          finishedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(schema.deepQueries.workspaceId, job.workspaceId),
+            eq(schema.deepQueries.id, deepQueryId),
+          ),
+        ),
+    );
+    throw error;
+  }
+}
+
 const HANDLERS: Partial<Record<Job['type'], (s: CairnServices, j: Job) => Promise<JobResult>>> = {
   'source.ingest': handleIngest,
   'source.extract': handleExtract,
+  'query.deep': handleDeepQuery,
   'vault.commit': handleVaultCommit,
   'index.rebuild': handleIndexRebuild,
   'connection.sync': handleConnectionSync,

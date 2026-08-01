@@ -421,6 +421,9 @@ export const jobTypes = [
   'connection.sync',
   'backup.create',
   'workspace.delete',
+  // Synthesis across everything saved, which takes longer than a request should
+  // wait for. See migration 0007.
+  'query.deep',
 ] as const;
 export type JobType = (typeof jobTypes)[number];
 
