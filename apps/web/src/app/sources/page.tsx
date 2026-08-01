@@ -19,6 +19,30 @@ import { loadSources } from '@/server/views';
 export const metadata = { title: 'Sources' };
 export const dynamic = 'force-dynamic';
 
+/**
+ * How long ago, in words.
+ *
+ * The question someone has about a connected source is whether it is current,
+ * and a timestamp makes them do arithmetic to answer it. "Checked 2 hours ago"
+ * answers it directly; "2026-07-31 14:32" answers a question nobody asked.
+ *
+ * Coarse on purpose. Nothing here is decided by the difference between 40 and
+ * 50 minutes, and false precision invites scrutiny the number cannot support.
+ */
+function sinceInWords(when: Date, now = new Date()): string {
+  const minutes = Math.floor((now.getTime() - when.getTime()) / 60_000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+
+  const days = Math.floor(hours / 24);
+  // Past a month the exact figure stops carrying meaning and the point becomes
+  // simply that it is stale.
+  return days > 30 ? 'over a month ago' : `${days} day${days === 1 ? '' : 's'} ago`;
+}
+
 export default async function SourcesPage() {
   const context = await requireContext();
   const csrf = await csrfToken();
@@ -78,7 +102,7 @@ export default async function SourcesPage() {
                       <ConnectionBadge state={connection.state} />
                       <span>
                         {connection.lastSyncedAt
-                          ? `Last checked ${connection.lastSyncedAt.toISOString().slice(0, 16).replace('T', ' ')}`
+                          ? `Checked ${sinceInWords(connection.lastSyncedAt)}`
                           : 'Not checked yet'}
                       </span>
                       {connection.externalAccountLabel ? (
