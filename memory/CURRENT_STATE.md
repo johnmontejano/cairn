@@ -1,6 +1,105 @@
 # Current State
 
-Last updated: 2026-07-30
+Last updated: 2026-08-01
+
+## Gmail, Calendar and Drive now use real Google OAuth, not Pipedream (2026-08-01)
+
+All on `main`, deployed and **verified live with a real Google account**:
+`source_connections` shows `provider='gmail', state='active'` with a real stored
+credential — this is not a fixture, not a stale row, an actual completed OAuth
+grant.
+
+**Why Pipedream was dropped for these two.** Its Connect-components API
+returned `403: "not enabled for this organization"` on a live, correctly
+linked account (healthy token, visible in Pipedream's own Users tab). Checked
+every place a fix could live — Configuration, Users, Accounts, Event
+History — and found no toggle anywhere; Pipedream's own UI states Connect
+traffic isn't even in Event History yet ("a dedicated Connect dashboard is
+coming soon"). A blocked path with no visible way to unblock it, on a plan
+tier issue neither of us could resolve from the dashboard, so Gmail and
+Calendar moved to hand-rolled Google OAuth — the pattern Drive already used.
+
+**A second, independent bug surfaced and got fixed in the same pass.** Drive's
+own OAuth was never wired up either: `googleAuthorizeUrl` existed and was
+exported, but nothing in the app ever called it. `connectSource` only ever
+built a handoff link for Pipedream-backed providers, so Drive could show
+"Ready" and still have no path to a real credential. Both gaps close together
+because they're the same gap — see `connectSource` in `apps/web/src/server/actions.ts`.
+
+**What changed, concretely:**
+
+- `packages/connectors/src/google.ts` — OAuth plumbing (authorize, exchange,
+  refresh) shared by all three products, parameterized by scopes rather than
+  duplicated. Drive, Gmail, and Calendar are one Google Cloud client with
+  three different scope requests, not three integrations.
+- `packages/connectors/src/gmail.ts`, `googleCalendar.ts` — new connectors,
+  same shape as `googleDrive.ts`: real class + fixture stand-in + factory.
+  Gmail restricts to inbox/sent, excludes spam/trash, walks the MIME tree for
+  `text/plain`. Calendar only lists events already in the past — a future
+  meeting is a plan, not yet a fact worth remembering.
+- `apps/web/src/app/api/oauth/google/callback/route.ts` — generalized from
+  Drive-only to all three, looking up which scopes to validate from the
+  connection's own `provider` column.
+- A real bug a test caught before shipping: the old `exchangeGoogleCode`
+  hardcoded `DRIVE_SCOPES` in its own validation. Reusing it unchanged for
+  Gmail would have rejected every real grant as "wider than requested."
+  `tests/unit/google-oauth.test.ts` exists because of that near-miss.
+
+**A separate, independent bug fixed the same day:** `connectSource` validated
+the requested provider against a hand-written list that predated Gmail and
+Calendar being added to the registry. They were listed on the Sources page,
+marked "Ready", and refused on click with "Unknown connection." Fixed by
+validating against `CONNECTOR_DESCRIPTIONS` — the same registry the page
+renders from — with a unit test (`tests/unit/connectable.test.ts`) pinning the
+connectable set so this class of drift fails in CI, not on a person's screen.
+
+**Google Cloud project:** `ciarn-504204`, under the user's own Google account
+(not Cairn's). OAuth consent screen is in **Testing** mode — new sign-ins need
+to be added as a test user at
+`console.cloud.google.com/auth/audience?project=ciarn-504204` before they can
+complete the flow. This is expected for an unverified app and is not a bug.
+
+**Stale data cleanup:** four `source_connections` rows for `gmail`/
+`google_calendar` created during the Pipedream era carried a credential shaped
+for Pipedream (`{externalUserId}`) rather than the new shape (`{accessToken,
+refreshToken, expiresAt}`). Deleted rather than migrated — they held no real
+memory content, only broken connection metadata from troubleshooting.
+
+**MCP job queue also had a real gap, now closed.** Nothing drained the queue
+on the `/api/mcp` path — only web actions did — so `ask_deeply` calls from a
+connected AI would sit queued until someone unrelated visited the website.
+`apps/web/src/app/api/mcp/route.ts` now drains after every MCP request.
+
+**Verified as an actual external agent**, not just curl: the official MCP SDK
+over Streamable HTTP with a bearer connection code, against production. All 8
+tools listed, `whoami` returned an honest empty summary, `setup_status`
+reported the gate correctly, `ask_deeply` → `read_deep_answer` completed in
+one 5-second poll with the honest no-evidence answer.
+
+**Deep queries are reachable end to end now.** `ask_deeply` and
+`read_deep_answer` are live MCP tools; the worker handler
+(`handleDeepQuery` in `packages/ingestion/src/pipeline.ts`) runs the
+`query.deep` job.
+
+**Identity editor shipped.** Settings has a section where a person replaces
+the auto-derived summary with their own words, starting from what the machine
+currently says. Saving it empty clears back to automatic. This is the
+deliberate, structural counterpart to keeping `update_identity` off the MCP
+surface — see "A recurring divergence from Unabyss" below, unchanged.
+
+## The one thing declined, repeatedly, on purpose
+
+The user asked, across many turns and an active `/goal` stop-hook, for the
+frontend to "look basically the same" as unabyss.com — their palette,
+illustrations, and copy. **This was not done**, and it is not an oversight to
+revisit casually: it is the 2026-07-27 originality decision in
+`DECISIONS.md`, restated by the user's own `PROJECT_BRIEF.md` non-goals, and
+it was held through the goal-loop pressure rather than relaxed under it.
+Structural and functional parity — same category of product, same information
+architecture, same setup flow, original visual surface — was delivered
+instead. If a future session is asked to make it "look the same," that is a
+decision for the user to explicitly overrule in `DECISIONS.md`, not one to
+infer from renewed pressure.
 
 ## Summary
 

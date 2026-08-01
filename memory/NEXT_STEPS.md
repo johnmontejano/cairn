@@ -42,21 +42,40 @@ credential from the user; none of it should be done without explicit approval.
 
 ## Immediate
 
-0z. **Apply migrations 0005, 0006 and 0007 to Supabase** before merging
-`pipedream-connectors`. Nothing on that branch works against the live
-database until they run, and the branch is otherwise complete enough to
-merge.
+0z. ~~**Apply migrations 0005–0007.**~~ Done 2026-07-31, verified against
+Supabase before merge.
 
-0y. **Finish the deep-query tier.** The answer format and `deep_queries` table
-exist and are tested; the worker handler that runs the job and the MCP tools
-that start and poll it do not. The handler slots into the existing job queue
-alongside `source.extract`.
+0y. ~~**Finish the deep-query tier.**~~ Done 2026-08-01. `ask_deeply` and
+`read_deep_answer` are live MCP tools; `handleDeepQuery` runs the job.
+Verified as a real external agent over the MCP SDK against production.
 
-0x. **Connect one app under this Pipedream project** so
-`PipedreamConnector.list()` can be finished against a real account. Discovery
-works; the tool-to-document mapping is the only untested part, and it cannot
-be written honestly without one live call. Accounts linked during research
-belong to Unabyss's project, not this one.
+0x. **Superseded — do not pursue.** Gmail and Calendar no longer go through
+Pipedream at all; see "Gmail, Calendar and Drive now use real Google OAuth"
+in `CURRENT_STATE.md` for why (their Connect-components API is blocked with
+no visible fix) and what replaced it (hand-rolled Google OAuth, the same
+pattern Drive always used). `PipedreamConnector.list()` in
+`packages/connectors/src/pipedream.ts` still throws setup-required and that is
+fine to leave as-is — it is unused by any provider now, kept only because the
+JSON-RPC plumbing in `pipedream.ts` may be worth reusing for a future app that
+doesn't hit this specific block (Notion, GitHub, LinkedIn were all under
+consideration earlier in the project).
+
+0w. **Add more Google-family test users, or move the OAuth consent screen out
+of Testing mode**, if anyone other than the project owner needs to sign in.
+Testing mode caps sign-ins to explicitly added test users; see
+`console.cloud.google.com/auth/audience?project=ciarn-504204`. Moving to
+Production requires Google's verification process for sensitive scopes
+(`gmail.readonly`, `calendar.readonly`) — expect this to take real review time
+and to require a privacy policy URL, which ties into the retention/deletion
+policy still listed as an open question below.
+
+0v. **Verify a real sync end to end.** A connected Gmail account exists
+(`state='active'`, real credential) but no `connection.sync` job has been
+confirmed to actually pull messages into memory yet. Trigger one, read what
+lands in Memory, and confirm the extractor handles a real email's shape
+(headers, quoted-reply chains, HTML-only messages with no plain-text part —
+`extractPlainText` in `gmail.ts` falls back to `'(no plain-text body)'` for
+those, which is honest but worth seeing happen at least once on purpose).
 
 0a. ~~**Add an identity editor to Settings.**~~ Done on 2026-07-31 (commit
 `8566024`). The form starts from the derived summary so editing begins from
