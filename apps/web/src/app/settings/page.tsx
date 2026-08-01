@@ -1,8 +1,14 @@
-import { Badge, Callout, Card, Disclosure, Field, TextInput } from '@cairn/ui';
+import { Badge, Callout, Card, Disclosure, Field, TextArea, TextInput } from '@cairn/ui';
 import { PRODUCT } from '@cairn/config';
+import { IDENTITY_MAX_CHARS } from '@cairn/search';
 import { AppShell } from '@/components/chrome';
 import { ActionForm, ConfirmForm, SubmitButton } from '@/components/forms';
-import { deleteEverything, restoreFromBackup, saveWorkspaceSettings } from '@/server/actions';
+import {
+  deleteEverything,
+  restoreFromBackup,
+  saveWorkspaceSettings,
+  updateIdentity,
+} from '@/server/actions';
 import { csrfToken, requireContext } from '@/server/context';
 import { loadSettings } from '@/server/views';
 
@@ -122,6 +128,48 @@ export default async function SettingsPage() {
             </p>
           </Disclosure>
         ) : null}
+      </section>
+
+      {/* ----------------------------- identity ----------------------------- */}
+      <section aria-labelledby="identity" style={{ marginBottom: '2.5rem' }}>
+        <h2 id="identity" className="cairn-section-title">
+          How connected AIs see you
+        </h2>
+        <Card>
+          <p className="cairn-card__description" style={{ marginTop: 0 }}>
+            The first thing a connected AI can ask for is a short summary of who you are and what
+            you are working on. It builds itself from the memory you keep. If you would rather say
+            it in your own words, edit it here — your version replaces the automatic one and stays
+            put until you clear it.
+          </p>
+          <p className="cairn-meta">
+            <Badge tone={view.identity.override ? 'info' : 'good'}>
+              {view.identity.override
+                ? 'Your words — no longer updating itself'
+                : 'Built automatically from what you keep'}
+            </Badge>
+          </p>
+          <ActionForm action={updateIdentity} csrf={csrf} className="cairn-stack cairn-stack--md">
+            <Field
+              id="identity-text"
+              label="The summary"
+              hint={`Up to ${IDENTITY_MAX_CHARS} characters. Save it empty to go back to the automatic version.`}
+            >
+              {({ id }) => (
+                <TextArea
+                  id={id}
+                  name="identity"
+                  rows={10}
+                  maxLength={IDENTITY_MAX_CHARS}
+                  defaultValue={view.identity.override ?? view.identity.derived}
+                />
+              )}
+            </Field>
+            <div>
+              <SubmitButton busyLabel="Saving…">Save summary</SubmitButton>
+            </div>
+          </ActionForm>
+        </Card>
       </section>
 
       {/* ------------------------------ restore ----------------------------- */}

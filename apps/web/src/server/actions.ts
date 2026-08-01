@@ -45,7 +45,7 @@ import {
   submitSource,
 } from '@cairn/ingestion';
 import { getServices } from '@cairn/ingestion';
-import { indexMemoryItems } from '@cairn/search';
+import { IDENTITY_MAX_CHARS, indexMemoryItems } from '@cairn/search';
 import { restoreBackup } from '@cairn/vault';
 import {
   CSRF_COOKIE,
@@ -856,6 +856,56 @@ export async function saveWorkspaceSettings(
     );
     revalidatePath('/settings');
     return { ok: true, message: 'Settings saved.' };
+  });
+}
+
+/**
+ * Replaces — or clears — the summary a connected AI reads first.
+ *
+ * This is the editor that was deliberately not exposed over MCP: whoami reads
+ * the summary, but changing it happens only here, behind the person's own
+ * sign-in. Saving an empty box is how you go back to the automatic version,
+ * and that is stated on the form rather than left to be discovered.
+ */
+export async function updateIdentity(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  return guard(async () => {
+    await assertCsrf(formData);
+    const context = await requireContext();
+    const text = String(formData.get('identity') ?? '').trim();
+    if (text.length > IDENTITY_MAX_CHARS) {
+      return {
+        error: `That is ${text.length} characters. The summary is capped at ${IDENTITY_MAX_CHARS} because it travels with every request a connected AI makes.`,
+      };
+    }
+
+    const cleared = text.length === 0;
+    await withTenant(context.services.handle, context.actor, async (tx) => {
+      await tx
+        .update(schema.workspaceSettings)
+        .set({
+          identityMarkdown: cleared ? null : text,
+          identityUpdatedAt: cleared ? null : new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.workspaceSettings.workspaceId, context.actor.workspaceId));
+      await auditRepo.recordAudit(tx, {
+        workspaceId: context.actor.workspaceId,
+        actorUserId: context.actor.userId,
+        action: 'settings.updated',
+        metadata: { field: 'identity', cleared, chars: text.length },
+      });
+    });
+
+    revalidatePath('/settings');
+    return {
+      ok: true,
+      message: cleared
+        ? 'Cleared. The summary goes back to building itself from what you keep.'
+        : 'Saved. Connected AIs now read exactly what you wrote.',
+    };
   });
 }
 

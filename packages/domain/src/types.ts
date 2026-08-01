@@ -503,6 +503,7 @@ export const auditActions = [
   'export.created',
   'backup.created',
   'restore.performed',
+  'settings.updated',
   'mcp.retrieved',
   'mcp.proposed',
   'mcp.client_created',

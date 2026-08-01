@@ -26,7 +26,7 @@ import {
   type VaultVersion,
   CANONICAL_DOCS,
 } from '@cairn/domain';
-import { searchMemory } from '@cairn/search';
+import { assembleIdentity, searchMemory } from '@cairn/search';
 import { PostgresMemoryVault } from '@cairn/vault';
 import type { RequestContext } from './context';
 
@@ -379,9 +379,17 @@ export interface SettingsView {
   }>;
   memoryCount: number;
   sourceCount: number;
+  /**
+   * The summary a connected AI reads first. `override` is the person's own
+   * text when they have replaced the automatic one; `derived` is what the
+   * machine builds from approved memory, shown so they can see exactly what
+   * they would be replacing.
+   */
+  identity: { override: string | null; derived: string };
 }
 
 export async function loadSettings(context: RequestContext): Promise<SettingsView> {
+  const crypto = await context.services.keyring.get(context.actor.workspaceId);
   return withTenant(context.services.handle, context.actor, async (tx) => {
     const defaults = { budgetUsd: context.services.config.env.CAIRN_AI_MONTHLY_BUDGET_USD };
     const [settings, budget] = await Promise.all([
@@ -424,7 +432,25 @@ export async function loadSettings(context: RequestContext): Promise<SettingsVie
       .from(schema.sourceItems)
       .where(eq(schema.sourceItems.workspaceId, context.actor.workspaceId));
 
+    // Both halves of the summary: the person's override when one exists, and
+    // the derived version regardless, so the editor can show what clearing
+    // the override would go back to.
+    const [identityRow] = await tx
+      .select({ identityMarkdown: schema.workspaceSettings.identityMarkdown })
+      .from(schema.workspaceSettings)
+      .where(eq(schema.workspaceSettings.workspaceId, context.actor.workspaceId))
+      .limit(1);
+    const identityItems = await memoryRepo.listMemoryItems(tx, crypto, {
+      workspaceId: context.actor.workspaceId,
+      statuses: ['approved'],
+      limit: 200,
+    });
+
     return {
+      identity: {
+        override: identityRow?.identityMarkdown ?? null,
+        derived: assembleIdentity(identityItems).markdown,
+      },
       settings,
       budget,
       usage: usageRows.map((r) => ({
