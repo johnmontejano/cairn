@@ -234,6 +234,56 @@ Two decisions worth not re-litigating:
 This diverges from Unabyss, which does expose `update_identity` over MCP and
 relies on the assistant asking first. Cairn enforces it structurally instead.
 
+## Build queue progress (2026-07-31)
+
+All on branch `pipedream-connectors`, none merged to `main`. Migrations `0005`,
+`0006` and `0007` are unapplied against Supabase; checksums are in the commits.
+
+| Item                   | State                                                        |
+| ---------------------- | ------------------------------------------------------------ |
+| 1. Pipedream layer     | Verified live. `list()` still unmapped — see below.          |
+| 2. Gmail + Calendar    | Wired. Drive and GitHub deliberately left hand-written.      |
+| 3. Identity summary    | Done. `whoami` read-only.                                    |
+| 4. Setup state machine | Done. `setup_status` read-only.                              |
+| 5. Deep answer         | Format and storage done. No worker handler or MCP tools yet. |
+| 6. Partial-serve       | Folded into item 5 rather than bolted on.                    |
+
+Three things a live call taught that documentation had not:
+
+1. The MCP endpoint answers `text/event-stream` even for a single
+   request-response, so `res.json()` throws on the `event: message` preamble.
+2. Roughly half the tools each app exposes are writes — Notion offers
+   create-page and update-page beside search. `readOnlyTools()` filters on the
+   verb and fails closed on anything unrecognised, because `readOnly = true` has
+   to be enforced rather than trusted.
+3. `TOKEN_ENDPOINT` was right, and `expires_in` is 3600 — which is where the
+   one-hour cache fallback comes from rather than a guess.
+
+**What is not finished on item 1:** `PipedreamConnector.list()` throws
+setup-required rather than mapping tools onto `FetchedSource`. Discovery works;
+fetching needs an account connected under _this_ project. The accounts linked
+during research belong to Unabyss's Pipedream project, not this one.
+
+**What is not finished on item 5:** the format and table exist; the worker
+handler that runs the job and the MCP tools that start and poll it do not.
+
+## A recurring divergence from Unabyss
+
+Three tools now stop short of what Unabyss exposes, for the same reason each
+time: `update_identity`, advancing setup, and starting a deep query are all
+writes, and `memory:write` sits in `RESERVED_MCP_SCOPES` so nothing reachable
+over MCP changes saved content without the person present.
+
+Unabyss also drives its setup by returning text addressed to the assistant
+("call step2 next, do not offer to skip"). That works only on clients that treat
+tool output as commands. Cairn returns state and lets the client decide, so a
+client that ignores imperative text still behaves correctly.
+
+This is a real product tradeoff, not an oversight: Cairn's setup cannot be
+completed purely inside the AI tool until either a narrower grantable write
+scope exists or the remaining steps move to Settings. Worth deciding
+deliberately.
+
 ## Not done
 
 - **Sign-in is still `AUTH_PROVIDER=fixture`**, deliberately, so the stack could

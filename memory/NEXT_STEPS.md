@@ -42,6 +42,22 @@ credential from the user; none of it should be done without explicit approval.
 
 ## Immediate
 
+0z. **Apply migrations 0005, 0006 and 0007 to Supabase** before merging
+`pipedream-connectors`. Nothing on that branch works against the live
+database until they run, and the branch is otherwise complete enough to
+merge.
+
+0y. **Finish the deep-query tier.** The answer format and `deep_queries` table
+exist and are tested; the worker handler that runs the job and the MCP tools
+that start and poll it do not. The handler slots into the existing job queue
+alongside `source.extract`.
+
+0x. **Connect one app under this Pipedream project** so
+`PipedreamConnector.list()` can be finished against a real account. Discovery
+works; the tool-to-document mapping is the only untested part, and it cannot
+be written honestly without one live call. Accounts linked during research
+belong to Unabyss's project, not this one.
+
 0a. **Add an identity editor to Settings.** Migration `0005` created the
 `identity_markdown` column and `whoami` already prefers it over the derived
 summary, so this is a form and a server action, not a design problem. It is
