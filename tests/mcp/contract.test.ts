@@ -119,9 +119,13 @@ describe('the MCP server as a client sees it', () => {
     const { tools } = await client.listTools();
     const names = tools.map((t) => t.name).sort();
     expect(names).toEqual([
+      // Read-only despite writing a row: asking is reading, and the row is job
+      // bookkeeping rather than saved content.
+      'ask_deeply',
       'get_memory_item',
       'list_recent_changes',
       'propose_memory_update',
+      'read_deep_answer',
       'search_memory',
       // Read-only: it reports where setup stands and what is missing. Advancing
       // setup is not reachable from here, for the same reason update_identity

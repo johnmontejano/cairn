@@ -3,7 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { and, desc, eq, gt, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { MCP_PROTOCOL_REVISION, PRODUCT } from '@cairn/config';
-import { auditRepo, memoryRepo, schema, withTenant } from '@cairn/db';
+import { auditRepo, jobsRepo, memoryRepo, schema, withTenant } from '@cairn/db';
 import {
   type ActorContext,
   type Citation,
@@ -304,6 +304,123 @@ function registerTools(server: McpServer, context: McpContext): void {
 
       const missing = edited ? [] : missingIdentitySections(present);
       return toolResult({ markdown, edited, truncated, missing }, markdown);
+    },
+  );
+
+  server.registerTool(
+    'ask_deeply',
+    {
+      title: 'Ask a question that needs everything',
+      description:
+        'Ask something requiring synthesis across everything this person has saved — patterns, comparisons, how their thinking has changed. Returns an id to read later; this takes longer than a normal answer. For a direct lookup use search_memory instead.',
+      inputSchema: {
+        question: z.string().min(1).max(2000).describe('The question, in plain language'),
+        project_id: z.string().uuid().optional().describe('Restrict to one project'),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async ({ question, project_id }) => {
+      // Asking is reading, even when the answer arrives later. The row this
+      // creates is job bookkeeping, not saved content, so `memory:read` is the
+      // honest scope and the no-writes invariant is untouched.
+      requireScope(context.actor, 'memory:read');
+      const crypto = await context.services.keyring.get(context.actor.workspaceId);
+      const id = randomUUID();
+
+      await withTenant(context.services.handle, context.actor, async (tx) => {
+        await tx.insert(schema.deepQueries).values({
+          id,
+          workspaceId: context.actor.workspaceId,
+          projectId: project_id ?? null,
+          state: 'pending',
+          encryptedQuestion: crypto.encryptContent(question, 'deep_query', id),
+        });
+        await jobsRepo.enqueueIn(tx, {
+          workspaceId: context.actor.workspaceId,
+          projectId: project_id ?? null,
+          type: 'query.deep',
+          // Keyed on the query, so a retried tool call cannot start two runs of
+          // the same expensive synthesis.
+          idempotencyKey: `deep:${id}`,
+          payload: { deepQueryId: id },
+        });
+      });
+
+      await audit(context, 'mcp.retrieved', { tool: 'ask_deeply', queryId: id });
+
+      return toolResult(
+        { query_id: id, state: 'pending', poll_after_seconds: 5 },
+        `Working on it. Read the answer with read_deep_answer using id ${id}. It usually takes under a minute.`,
+      );
+    },
+  );
+
+  server.registerTool(
+    'read_deep_answer',
+    {
+      title: 'Read a deep answer',
+      description:
+        'Fetch the answer for an id returned by ask_deeply. Reports whether it is still working, finished, or failed.',
+      inputSchema: { query_id: z.string().uuid() },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async ({ query_id }) => {
+      requireScope(context.actor, 'memory:read');
+      const crypto = await context.services.keyring.get(context.actor.workspaceId);
+
+      const [row] = await withTenant(context.services.handle, context.actor, (tx) =>
+        tx
+          .select()
+          .from(schema.deepQueries)
+          .where(
+            and(
+              eq(schema.deepQueries.workspaceId, context.actor.workspaceId),
+              eq(schema.deepQueries.id, query_id),
+            ),
+          )
+          .limit(1),
+      );
+
+      if (!row) {
+        return toolResult(
+          { found: false },
+          'No such question. It may belong to a different workspace, or have been removed.',
+        );
+      }
+
+      if (row.state === 'failed') {
+        return toolResult(
+          { found: true, state: 'failed', error: row.errorMessage },
+          row.errorMessage ?? 'That question could not be answered.',
+        );
+      }
+
+      if (row.state !== 'ready' || !row.encryptedAnswer) {
+        // Say it is still working rather than returning an empty answer that
+        // reads as "nothing found".
+        return toolResult(
+          { found: true, state: row.state, poll_after_seconds: 5 },
+          'Still working on that one. Try again in a few seconds.',
+        );
+      }
+
+      const markdown = crypto.decryptContent(row.encryptedAnswer, 'deep_query', row.id);
+      await audit(context, 'mcp.retrieved', {
+        tool: 'read_deep_answer',
+        queryId: row.id,
+        evidence: row.evidenceCount,
+      });
+
+      return toolResult(
+        {
+          found: true,
+          state: 'ready',
+          answer: markdown,
+          evidence_count: row.evidenceCount,
+          indexing_pending: row.indexingPending,
+        },
+        markdown,
+      );
     },
   );
 
