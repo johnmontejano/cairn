@@ -33,6 +33,11 @@ export default async function HomePage() {
           : `${overview.approvedCount} thing${overview.approvedCount === 1 ? '' : 's'} saved, from ${overview.sourceCount} source${overview.sourceCount === 1 ? '' : 's'}.`}
       </p>
 
+      {/* A progress bar says work is happening. It does not say what that means
+          for an answer asked right now, which is the thing worth knowing: a
+          question asked mid-import returns less than it will in a minute, and
+          without being told so, a thin answer reads as the product failing
+          rather than as a temporary state. */}
       {overview.runningJobs > 0 ? (
         <div style={{ marginBottom: '1.5rem' }}>
           <ProgressSteps
@@ -42,6 +47,13 @@ export default async function HomePage() {
               { label: 'Ready', state: 'pending' },
             ]}
           />
+          <div style={{ marginTop: '0.75rem' }}>
+            <Callout tone="info" live="polite">
+              Still reading {overview.runningJobs} thing
+              {overview.runningJobs === 1 ? '' : 's'}. You can ask questions now, but answers may
+              miss whatever has not been read yet.
+            </Callout>
+          </div>
         </div>
       ) : null}
 
