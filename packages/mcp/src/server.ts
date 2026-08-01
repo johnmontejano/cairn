@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { and, desc, eq, gt } from 'drizzle-orm';
+import { and, desc, eq, gt, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { MCP_PROTOCOL_REVISION, PRODUCT } from '@cairn/config';
 import { auditRepo, memoryRepo, schema, withTenant } from '@cairn/db';
@@ -8,10 +8,15 @@ import {
   type ActorContext,
   type Citation,
   type RetrievedPassage,
+  type SaveBackMode,
+  type SetupStep,
   CANONICAL_DOCS,
   ForbiddenError,
+  MINIMUM_CONNECTED_APPS,
   memoryTypes,
+  nextSetupStep,
   requireScope,
+  setupState,
 } from '@cairn/domain';
 import type { CairnServices } from '@cairn/ingestion';
 import {
@@ -299,6 +304,68 @@ function registerTools(server: McpServer, context: McpContext): void {
 
       const missing = edited ? [] : missingIdentitySections(present);
       return toolResult({ markdown, edited, truncated, missing }, markdown);
+    },
+  );
+
+  server.registerTool(
+    'setup_status',
+    {
+      title: 'Where first-run setup stands',
+      description:
+        'Report what still needs doing before this person gets useful answers — which apps are connected, what is missing, and what they have chosen to have saved back.',
+      inputSchema: {},
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async () => {
+      requireScope(context.actor, 'memory:read');
+
+      const state = await withTenant(context.services.handle, context.actor, async (tx) => {
+        const [settings] = await tx
+          .select()
+          .from(schema.workspaceSettings)
+          .where(eq(schema.workspaceSettings.workspaceId, context.actor.workspaceId))
+          .limit(1);
+
+        // Counted now rather than read from a stored tally: a count written
+        // when someone passed the gate would still read as passed after they
+        // disconnected everything.
+        const live = await tx
+          .select({ id: schema.sourceConnections.id })
+          .from(schema.sourceConnections)
+          .where(
+            and(
+              eq(schema.sourceConnections.workspaceId, context.actor.workspaceId),
+              eq(schema.sourceConnections.state, 'active'),
+              isNull(schema.sourceConnections.disconnectedAt),
+            ),
+          );
+
+        return setupState({
+          step: (settings?.setupStep as SetupStep | null) ?? null,
+          connectedApps: live.length,
+          saveBackMode: (settings?.saveBackMode as SaveBackMode) ?? 'important',
+          settledAt: settings?.setupSettledAt ?? null,
+        });
+      });
+
+      const next = nextSetupStep(state);
+      await audit(context, 'mcp.retrieved', {
+        tool: 'setup_status',
+        step: state.step,
+        connected: state.connectedApps,
+      });
+
+      // Reported, not commanded. A client decides what to do with this; nothing
+      // here tells the assistant which tool to call next.
+      const text = state.settled
+        ? `Setup is finished. ${state.connectedApps} app(s) connected. Saving back: ${state.saveBackMode}.`
+        : [
+            `Setup is at "${state.step}".`,
+            `${state.connectedApps} of ${MINIMUM_CONNECTED_APPS} app(s) connected.`,
+            state.blockedBecause ?? `Next step: ${next ?? 'none'}.`,
+          ].join(' ');
+
+      return toolResult({ ...state, next_step: next }, text);
     },
   );
 

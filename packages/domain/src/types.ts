@@ -211,6 +211,26 @@ export interface MemoryConflict {
  * Sources
  * ------------------------------------------------------------------ */
 
+/**
+ * First-run setup.
+ *
+ * The sequence lives here rather than in the database so adding a step is a
+ * code change with a test behind it, not a migration.
+ *
+ * `connect` is the only step that can refuse to advance. One connected app
+ * proves the mechanism works; two prove the point of the product, which is that
+ * context arrives from more than one place. Below that the answers are thin
+ * enough that someone would reasonably conclude it does not work.
+ */
+export const setupSteps = ['offer', 'connect', 'save_back', 'ready'] as const;
+export type SetupStep = (typeof setupSteps)[number];
+
+export const MINIMUM_CONNECTED_APPS = 2;
+
+/** What an assistant may write back without being asked each time. */
+export const saveBackModes = ['everything', 'important', 'nothing'] as const;
+export type SaveBackMode = (typeof saveBackModes)[number];
+
 export const sourceProviders = [
   'paste',
   'upload',

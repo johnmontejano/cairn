@@ -508,6 +508,10 @@ export const workspaceSettings = pgTable('workspace_settings', {
   // person replaced it and derivation stops. See migration 0005.
   identityMarkdown: text('identity_markdown'),
   identityUpdatedAt: timestamp('identity_updated_at', { withTimezone: true }),
+  // First-run setup. Null step means it has never been offered. See 0006.
+  setupStep: text('setup_step'),
+  setupSettledAt: timestamp('setup_settled_at', { withTimezone: true }),
+  saveBackMode: text('save_back_mode').notNull().default('important'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
