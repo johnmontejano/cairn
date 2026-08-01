@@ -13,6 +13,7 @@ import {
   createPipedreamConnectLink,
   fetchUrlSafely,
   pipedreamConfig,
+  CONNECTOR_DESCRIPTIONS,
   PIPEDREAM_APPS,
 } from '@cairn/connectors';
 import {
@@ -33,6 +34,7 @@ import {
   type MemoryType,
   type SensitivityLevel,
   type ClientVisibilityPolicy,
+  type SourceProvider,
   memoryTypes,
 } from '@cairn/domain';
 import {
@@ -610,6 +612,19 @@ export async function resolveMemoryConflict(
  * Connections
  * ------------------------------------------------------------------ */
 
+/**
+ * What each connection reads, recorded on the row so the interface can show it.
+ * Notion has no scope strings — access is whatever the person shares with the
+ * integration — so its entry records intent only.
+ */
+const CONNECTION_SCOPES: Partial<Record<SourceProvider, string[]>> = {
+  google_drive: ['drive.readonly'],
+  github: ['contents:read'],
+  notion: ['pages:read'],
+  gmail: ['mail:read'],
+  google_calendar: ['events:read'],
+};
+
 export async function connectSource(
   _prev: ActionResult,
   formData: FormData,
@@ -618,14 +633,18 @@ export async function connectSource(
     await assertCsrf(formData);
     const context = await requireContext();
     const project = await resolveProject(context, String(formData.get('projectId') ?? ''));
-    const provider = String(formData.get('provider') ?? '') as 'google_drive' | 'github' | 'notion';
-    if (!['google_drive', 'github', 'notion'].includes(provider)) {
+    const provider = String(formData.get('provider') ?? '') as SourceProvider;
+    // Validated against the registry the Sources page renders from, not a list
+    // kept here by hand. Gmail and Calendar shipped with exactly that drift:
+    // listed, marked Ready, and refused on click with "Unknown connection".
+    if (!CONNECTOR_DESCRIPTIONS[provider]?.needsAccount) {
       return { error: 'Unknown connection.' };
     }
 
     const connector = createConnector(provider, context.services.config);
     const status = connector?.status() ?? 'setup-required';
     const crypto = await context.services.keyring.get(context.actor.workspaceId);
+    const binding = PIPEDREAM_APPS[provider];
 
     const connectionId = await withTenant(context.services.handle, context.actor, async (tx) => {
       const connection = await sourcesRepo.createConnection(tx, crypto, {
@@ -635,14 +654,14 @@ export async function connectSource(
         displayName: connector?.displayName ?? provider,
         // An unconfigured provider is recorded honestly rather than pretending.
         state: status === 'ready' ? 'active' : 'setup_required',
-        scopes:
-          provider === 'google_drive'
-            ? ['drive.readonly']
-            : provider === 'notion'
-              ? // Notion has no scope strings; access is whatever the person
-                // shares with the integration, so this records intent only.
-                ['pages:read']
-              : ['contents:read'],
+        scopes: CONNECTION_SCOPES[provider] ?? [],
+        // A Pipedream connection authenticates by this workspace's external
+        // user id rather than a stored token, and a later sync needs it to ask
+        // Pipedream for the right account. It is known now, so it is stored now.
+        credential:
+          binding && status === 'ready'
+            ? JSON.stringify({ externalUserId: `cairn:${context.actor.workspaceId}` })
+            : undefined,
         externalAccountLabel: status === 'ready' ? null : 'Demo data',
       });
       await auditRepo.recordAudit(tx, {
@@ -661,7 +680,6 @@ export async function connectSource(
     // the credential. So the record exists, and they are handed a link rather
     // than told they are connected when they are not.
     let handoffUrl: string | undefined;
-    const binding = PIPEDREAM_APPS[provider];
     if (binding && status === 'ready') {
       const pdConfig = pipedreamConfig(context.services.config);
       if (pdConfig) {
