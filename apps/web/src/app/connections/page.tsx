@@ -1,4 +1,4 @@
-import { Badge, Callout, Card, Disclosure, EmptyState } from '@cairn/ui';
+import { Badge, Callout, Card, Disclosure, EmptyState, LinkButton } from '@cairn/ui';
 import { MCP_PROTOCOL_REVISION, PRODUCT } from '@cairn/config';
 import { AppShell } from '@/components/chrome';
 import { ActionForm, SubmitButton } from '@/components/forms';
@@ -94,6 +94,13 @@ export default async function ConnectionsPage() {
   // connection-code machinery becomes the fallback for tools that cannot do it.
   const signInMode = view.authMode === 'oauth';
   const clients = mcpClients(signInMode);
+  // Every client's own instructions point at one of two places on this same
+  // page: the address block (signed-in tools) or the connection-code form
+  // (everything else, and the fallback for a signed-in tool that cannot use
+  // the address). Either way it is a plain anchor into content already on
+  // the page, not a new flow.
+  const connectHref = signInMode ? '#address' : '#client-name';
+  const connectLabel = signInMode ? 'Use the address above' : 'Get a connection code';
 
   return (
     <AppShell current="/connections" email={context.email}>
@@ -158,6 +165,13 @@ export default async function ConnectionsPage() {
                   <Badge tone="warn">Not yet</Badge>
                 )}
               </div>
+              {client.supported ? (
+                <div className="cairn-row" style={{ marginTop: '0.875rem' }}>
+                  <LinkButton tone="secondary" href={connectHref}>
+                    {connectLabel}
+                  </LinkButton>
+                </div>
+              ) : null}
             </Card>
           ))}
         </div>

@@ -1,9 +1,11 @@
 /*
  * Cairn's visual system.
  *
- * Warm paper and ink rather than the usual cool grey, with a single clay accent.
- * The restraint is deliberate: this product asks people to read and judge their
- * own words, so the interface should recede.
+ * A cool, working-tool ground with one deliberate indigo-blue accent, rather
+ * than the warm cream-and-clay pairing that reads as machine-generated
+ * default in this category. The restraint is still deliberate: this product
+ * asks people to read and judge their own words, so the interface should
+ * recede.
  *
  * Every foreground/background pair below meets WCAG 2.2 AA contrast in both
  * themes. Do not introduce a colour without checking it.
@@ -12,23 +14,24 @@
 @layer theme {
   :root {
     /* Surfaces */
-    --cairn-paper: #fbf9f6;
+    --cairn-paper: #f4f6f8;
     --cairn-surface: #ffffff;
-    --cairn-surface-sunken: #f2eee8;
+    --cairn-surface-sunken: #e9edf0;
     --cairn-surface-raised: #ffffff;
 
-    /* Ink — 16.1:1, 7.4:1 and 4.6:1 on --cairn-paper */
-    --cairn-ink: #22201d;
-    --cairn-ink-muted: #5c564e;
-    --cairn-ink-subtle: #736c62;
+    /* Ink — 16.5:1, 7.0:1 and 5.1:1 on --cairn-paper */
+    --cairn-ink: #14181c;
+    --cairn-ink-muted: #4b5560;
+    --cairn-ink-subtle: #5f6a75;
 
-    /* Accent — clay. 4.9:1 on paper, white text on --cairn-accent is 4.8:1 */
-    --cairn-accent: #a3492b;
-    --cairn-accent-hover: #8b3d23;
-    --cairn-accent-soft: #f7e9e3;
-    --cairn-accent-ink: #7d3520;
+    /* Accent — indigo. 5.8:1 on paper, --cairn-accent-ink is 9.0:1 */
+    --cairn-accent: #3454d1;
+    --cairn-accent-hover: #2a44ad;
+    --cairn-accent-soft: #e7ecfb;
+    --cairn-accent-ink: #24399e;
 
-    /* Status */
+    /* Status — same hue families as before, re-checked against the new
+       paper: good 6.0:1, warn 6.3:1, danger 7.1:1, info 6.8:1. */
     --cairn-good: #1f6b45;
     --cairn-good-soft: #e3f1ea;
     --cairn-warn: #7a5410;
@@ -38,20 +41,28 @@
     --cairn-info: #245b7d;
     --cairn-info-soft: #e2eef5;
 
-    --cairn-border: #e2dbd1;
-    --cairn-border-strong: #c9c0b3;
-    --cairn-focus: #1f5f8b;
+    --cairn-border: #d7dee4;
+    --cairn-border-strong: #b9c3cc;
+    --cairn-focus: #2a44ad;
 
     --cairn-radius-sm: 6px;
     --cairn-radius: 10px;
     --cairn-radius-lg: 16px;
 
-    --cairn-shadow-sm: 0 1px 2px rgb(34 32 29 / 0.06);
-    --cairn-shadow: 0 2px 8px rgb(34 32 29 / 0.08);
-    --cairn-shadow-lg: 0 8px 28px rgb(34 32 29 / 0.12);
+    --cairn-shadow-sm: 0 1px 2px rgb(20 24 28 / 0.06);
+    --cairn-shadow: 0 2px 8px rgb(20 24 28 / 0.08);
+    --cairn-shadow-lg: 0 8px 28px rgb(20 24 28 / 0.12);
 
     /* 44px is the WCAG 2.2 enhanced target size; used for every control. */
     --cairn-target: 44px;
+
+    /* Five-step type scale: caption through page title. Body copy stays at
+       the browser default (1rem) between --cairn-text-sm and -md. */
+    --cairn-text-xs: 0.8125rem;
+    --cairn-text-sm: 0.9375rem;
+    --cairn-text-md: 1.125rem;
+    --cairn-text-lg: 1.5rem;
+    --cairn-text-xl: 2rem;
 
     --cairn-font-sans:
       ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
@@ -62,20 +73,25 @@
 
   @media (prefers-color-scheme: dark) {
     :root {
-      --cairn-paper: #1a1917;
-      --cairn-surface: #221f1d;
-      --cairn-surface-sunken: #151412;
-      --cairn-surface-raised: #2a2724;
+      --cairn-paper: #10141a;
+      --cairn-surface: #171c22;
+      --cairn-surface-sunken: #0c0f13;
+      --cairn-surface-raised: #1d232b;
 
-      --cairn-ink: #f2ede6;
-      --cairn-ink-muted: #c0b8ac;
-      --cairn-ink-subtle: #a49b8e;
+      /* Ink — 15.6:1, 8.8:1 and 5.1:1 on --cairn-paper */
+      --cairn-ink: #e7ecf2;
+      --cairn-ink-muted: #a9b4bf;
+      --cairn-ink-subtle: #7c8892;
 
-      --cairn-accent: #e08b6a;
-      --cairn-accent-hover: #eda27f;
-      --cairn-accent-soft: #3a2a22;
-      --cairn-accent-ink: #f0b499;
+      /* Accent is a lighter tint here — a saturated indigo goes muddy on a
+         dark ground. 6.6:1 on paper, --cairn-accent-ink is 9.8:1. */
+      --cairn-accent: #7c97f0;
+      --cairn-accent-hover: #94aeff;
+      --cairn-accent-soft: #202a47;
+      --cairn-accent-ink: #aabbf7;
 
+      /* Status — unchanged hues, still comfortably AA against the new dark
+         paper: good 9.0:1, warn 9.4:1, danger 7.8:1, info 9.0:1. */
       --cairn-good: #6cc79a;
       --cairn-good-soft: #1c3229;
       --cairn-warn: #dcb35f;
@@ -85,9 +101,9 @@
       --cairn-info: #85bcdd;
       --cairn-info-soft: #1c2c36;
 
-      --cairn-border: #383430;
-      --cairn-border-strong: #4d4740;
-      --cairn-focus: #8ec2e6;
+      --cairn-border: #262d36;
+      --cairn-border-strong: #333c47;
+      --cairn-focus: #94aeff;
 
       --cairn-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
       --cairn-shadow: 0 2px 10px rgb(0 0 0 / 0.45);

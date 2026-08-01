@@ -4,6 +4,7 @@ import { SUPPORTED_UPLOAD_EXTENSIONS } from '@cairn/ingestion';
 import { Callout, Card, ProgressSteps } from '@cairn/ui';
 import { AppShell } from '@/components/chrome';
 import { ActionForm, PasteForm, UploadForm, UrlForm } from '@/components/forms';
+import { LiveProgress } from '@/components/live-progress';
 import { MemoryCard } from '@/components/memory-card';
 import { RecentDecisions } from '@/components/recent-decisions';
 import { addPastedText, addUploadedFiles, addWebPage, loadExample } from '@/server/actions';
@@ -106,6 +107,8 @@ export default async function WelcomePage({
         </Card>
       )}
 
+      <LiveProgress stillWorking={overview.runningJobs > 0} />
+
       {overview.proposals.length > 0 ? (
         <section style={{ marginTop: '2.5rem' }} aria-labelledby="found">
           <ProgressSteps
@@ -141,7 +144,7 @@ export default async function WelcomePage({
       ) : overview.runningJobs > 0 ? (
         <div style={{ marginTop: '1.5rem' }}>
           <Callout tone="info" live="polite">
-            Still reading. Refresh this page in a moment.
+            Still reading. This updates on its own.
           </Callout>
         </div>
       ) : null}

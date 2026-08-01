@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { PRODUCT } from '@cairn/config';
-import { SkipLink } from '@cairn/ui';
+import { Callout, SkipLink } from '@cairn/ui';
 import { signOut } from '@/server/actions';
+import { currentContext } from '@/server/context';
+import { loadShellStatus, type ShellStatusView } from '@/server/views';
 
 /** Three stacked stones. The only illustration in the product, used as the mark. */
 export function Wordmark({ withName = true }: { withName?: boolean }) {
@@ -36,7 +38,29 @@ const NAV = [
   { href: '/settings', label: 'Settings' },
 ];
 
-export function AppShell({
+/**
+ * Cheap, best-effort read of the two things `AppShell` shows before anyone
+ * asks: still-running jobs and first-run setup standing. Uses `currentContext`
+ * rather than `requireContext` deliberately — every page that renders
+ * `AppShell` has already required a session (and redirected if there wasn't
+ * one), so this never needs to redirect itself, and skipping that lets a
+ * missing session here resolve to "show nothing" instead of a second
+ * redirect from inside shared chrome. A read failure is swallowed the same
+ * way: this status is a nice-to-have, not something a transient DB hiccup
+ * should be allowed to take an entire page down for.
+ */
+async function loadShellStatusQuietly(): Promise<ShellStatusView | null> {
+  const context = await currentContext();
+  if (!context) return null;
+  try {
+    return await loadShellStatus(context);
+  } catch (error) {
+    console.error('loadShellStatus failed; hiding shell status for this request', error);
+    return null;
+  }
+}
+
+export async function AppShell({
   children,
   current,
   email,
@@ -47,6 +71,8 @@ export function AppShell({
   email: string;
   narrow?: boolean;
 }) {
+  const status = await loadShellStatusQuietly();
+
   return (
     <div className="cairn-shell">
       <SkipLink />
@@ -67,14 +93,38 @@ export function AppShell({
               </Link>
             ))}
           </nav>
-          <form action={signOut}>
-            <button type="submit" className="cairn-button cairn-button--quiet">
-              Sign out
-              <span className="cairn-visually-hidden"> ({email})</span>
-            </button>
-          </form>
+          <div className="cairn-header__actions">
+            {status && status.runningJobs > 0 ? (
+              <span className="cairn-shell-status" role="status">
+                <span className="cairn-shell-status__dot" aria-hidden="true" />
+                Still organizing your memory
+              </span>
+            ) : null}
+            <form action={signOut}>
+              <button type="submit" className="cairn-button cairn-button--quiet">
+                Sign out
+                <span className="cairn-visually-hidden"> ({email})</span>
+              </button>
+            </form>
+          </div>
         </div>
       </header>
+      {/* Persistent, not one-time-dismissible: half-finished setup has no
+          other signal pointing at it, so it stays visible on every page while
+          it's genuinely blocked, rather than being dismissed once and
+          forgotten. Driven by blockedBecause rather than `settled` --
+          `setupSettledAt` is only ever written by the MCP-driven setup flow,
+          so a workspace used entirely through the web app would otherwise
+          never settle and this would nag forever regardless of how complete
+          it actually is. blockedBecause is null exactly when there's nothing
+          concrete left to do. */}
+      {status && status.setup.blockedBecause ? (
+        <div className="cairn-shell-banner">
+          <Callout tone="info">
+            {status.setup.blockedBecause} <Link href="/sources">Go to Sources</Link>.
+          </Callout>
+        </div>
+      ) : null}
       <main id="main" className={narrow ? 'cairn-main cairn-main--narrow' : 'cairn-main'}>
         {children}
       </main>

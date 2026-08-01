@@ -155,6 +155,12 @@ export function providerLabel(provider: string | undefined): string {
       return 'Google Drive';
     case 'github':
       return 'GitHub';
+    case 'gmail':
+      return 'Gmail';
+    case 'google_calendar':
+      return 'Google Calendar';
+    case 'notion':
+      return 'Notion';
     default:
       return 'source';
   }

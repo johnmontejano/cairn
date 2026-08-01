@@ -29,6 +29,7 @@ body {
 h1,
 h2,
 h3 {
+  font-family: var(--cairn-font-serif);
   line-height: 1.25;
   letter-spacing: -0.01em;
 }
@@ -76,7 +77,7 @@ a:hover {
   align-items: center;
   gap: 0.5rem;
   font-weight: 650;
-  font-size: 1.0625rem;
+  font-size: var(--cairn-text-md);
   color: var(--cairn-ink);
   text-decoration: none;
   letter-spacing: -0.01em;
@@ -135,6 +136,47 @@ a:hover {
   }
 }
 
+.cairn-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* A standing "still working" pill, visible before anyone asks — the same
+   `runningJobs > 0` signal the /home and /welcome callouts already use, just
+   surfaced on every page instead of only the one someone happens to be on.
+   The dot reuses the `cairn-pulse` keyframe from `cairn-progress__dot`;
+   reduced motion is handled globally in tokens.css, not repeated here. */
+.cairn-shell-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 999px;
+  background: var(--cairn-surface-sunken);
+  color: var(--cairn-ink-muted);
+  font-size: var(--cairn-text-xs);
+  font-weight: 550;
+  white-space: nowrap;
+}
+.cairn-shell-status__dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--cairn-accent);
+  animation: cairn-pulse 1.6s ease-in-out infinite;
+}
+
+/* The persistent half-finished-setup banner. Sits below the header, above
+   whatever the page is about, aligned with the header's own width rather
+   than the (sometimes narrower) main column, since it is chrome, not page
+   content. */
+.cairn-shell-banner {
+  max-width: 68rem;
+  margin: 0 auto;
+  padding: 0.875rem 1.25rem 0;
+}
+
 .cairn-main {
   flex: 1;
   width: 100%;
@@ -150,7 +192,7 @@ a:hover {
   border-top: 1px solid var(--cairn-border);
   background: var(--cairn-surface);
   color: var(--cairn-ink-subtle);
-  font-size: 0.875rem;
+  font-size: var(--cairn-text-xs);
 }
 .cairn-footer__inner {
   max-width: 68rem;
@@ -165,7 +207,8 @@ a:hover {
 /* ------------------------------- typography ------------------------------ */
 
 .cairn-page-title {
-  font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2rem);
+  font-family: var(--cairn-font-serif);
+  font-size: var(--cairn-text-xl);
   font-weight: 650;
   margin: 0 0 0.375rem;
 }
@@ -173,10 +216,11 @@ a:hover {
   margin: 0 0 1.75rem;
   color: var(--cairn-ink-muted);
   max-width: 60ch;
-  font-size: 1.0625rem;
+  font-size: var(--cairn-text-md);
 }
 .cairn-section-title {
-  font-size: 1.125rem;
+  font-family: var(--cairn-font-serif);
+  font-size: var(--cairn-text-lg);
   font-weight: 600;
   margin: 0 0 0.75rem;
 }
@@ -203,7 +247,7 @@ a:hover {
 }
 .cairn-code {
   font-family: var(--cairn-font-mono);
-  font-size: 0.875rem;
+  font-size: var(--cairn-text-xs);
   background: var(--cairn-surface-sunken);
   border: 1px solid var(--cairn-border);
   border-radius: var(--cairn-radius-sm);
@@ -227,7 +271,7 @@ pre.cairn-code {
 .cairn-fieldset legend {
   padding: 0 0.375rem;
   font-weight: 550;
-  font-size: 0.9375rem;
+  font-size: var(--cairn-text-sm);
 }
 .cairn-choice {
   display: flex;
@@ -251,7 +295,7 @@ pre.cairn-code {
 }
 .cairn-meta {
   color: var(--cairn-ink-subtle);
-  font-size: 0.875rem;
+  font-size: var(--cairn-text-xs);
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
@@ -266,11 +310,11 @@ pre.cairn-code {
 }
 
 .cairn-answer p {
-  font-size: 1.0625rem;
+  font-size: var(--cairn-text-md);
   margin: 0 0 0.75rem;
 }
 .cairn-citation-marker {
-  font-size: 0.75rem;
+  font-size: var(--cairn-text-xs);
   vertical-align: super;
   color: var(--cairn-accent-ink);
   font-weight: 650;
@@ -301,13 +345,20 @@ pre.cairn-code {
   border-color: var(--cairn-accent);
   background: var(--cairn-accent-soft);
 }
+/* The same treatment as `:hover` above, held permanently for the one choice
+   worth calling out ahead of the others (e.g. connecting an AI once there is
+   enough saved to make it worthwhile). */
+.cairn-choice-card--accent {
+  border-color: var(--cairn-accent);
+  background: var(--cairn-accent-soft);
+}
 .cairn-choice-card__title {
   font-weight: 600;
-  font-size: 1.0625rem;
+  font-size: var(--cairn-text-md);
 }
 .cairn-choice-card__body {
   color: var(--cairn-ink-muted);
-  font-size: 0.9375rem;
+  font-size: var(--cairn-text-sm);
 }
 
 /* A question someone can try rather than compose. Sized to the same target as
@@ -322,7 +373,7 @@ pre.cairn-code {
   background: var(--cairn-surface);
   color: var(--cairn-ink);
   text-decoration: none;
-  font-size: 0.9375rem;
+  font-size: var(--cairn-text-sm);
   transition:
     background-color 120ms ease,
     border-color 120ms ease;
@@ -341,7 +392,7 @@ pre.cairn-code {
 .cairn-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9375rem;
+  font-size: var(--cairn-text-sm);
 }
 .cairn-table th,
 .cairn-table td {
@@ -425,7 +476,7 @@ pre.cairn-code {
   background: var(--cairn-surface);
   border: 1px solid var(--cairn-border);
   color: var(--cairn-ink-muted);
-  font-size: 0.8125rem;
+  font-size: var(--cairn-text-xs);
   font-weight: 550;
   box-shadow: var(--cairn-shadow-sm);
 }
@@ -474,14 +525,14 @@ pre.cairn-code {
   max-width: 30rem;
 }
 .cairn-hero__card-title {
-  font-size: 1.125rem;
+  font-size: var(--cairn-text-md);
   font-weight: 650;
   margin: 0 0 1rem;
 }
 
 .cairn-hero__note {
   margin: 1.25rem 0 0;
-  font-size: 0.875rem;
+  font-size: var(--cairn-text-xs);
   color: var(--cairn-ink-subtle);
   max-width: 30rem;
 }
@@ -518,7 +569,7 @@ pre.cairn-code {
   border-radius: var(--cairn-radius);
   padding: 0.875rem 1rem;
   box-shadow: var(--cairn-shadow-lg);
-  font-size: 0.875rem;
+  font-size: var(--cairn-text-xs);
 }
 @media (max-width: 62rem) {
   .cairn-art {
@@ -533,7 +584,7 @@ pre.cairn-code {
 }
 .cairn-art__proof-label {
   display: block;
-  font-size: 0.75rem;
+  font-size: var(--cairn-text-xs);
   font-weight: 650;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -553,7 +604,7 @@ pre.cairn-code {
 .cairn-art__proof-source {
   margin: 0.5rem 0 0;
   color: var(--cairn-ink-subtle);
-  font-size: 0.8125rem;
+  font-size: var(--cairn-text-xs);
 }
 
 /* -------------------------------- sections ------------------------------- */
@@ -574,7 +625,7 @@ pre.cairn-code {
   margin: 0 0 2rem;
   color: var(--cairn-ink-muted);
   max-width: 46rem;
-  font-size: 1.0625rem;
+  font-size: var(--cairn-text-md);
 }
 
 .cairn-steps {
@@ -604,7 +655,7 @@ pre.cairn-code {
   background: var(--cairn-accent-soft);
   color: var(--cairn-accent-ink);
   font-weight: 700;
-  font-size: 0.9375rem;
+  font-size: var(--cairn-text-sm);
   margin-bottom: 0.875rem;
 }
 @media (prefers-color-scheme: dark) {
@@ -614,13 +665,13 @@ pre.cairn-code {
 }
 .cairn-step__title {
   margin: 0 0 0.375rem;
-  font-size: 1.0625rem;
+  font-size: var(--cairn-text-md);
   font-weight: 650;
 }
 .cairn-step__body {
   margin: 0;
   color: var(--cairn-ink-muted);
-  font-size: 0.9375rem;
+  font-size: var(--cairn-text-sm);
 }
 
 /* ------------------------------ proof panel ------------------------------ */
@@ -649,11 +700,11 @@ pre.cairn-code {
 }
 .cairn-proof__answer {
   margin: 0 0 1rem;
-  font-size: 1.0625rem;
+  font-size: var(--cairn-text-md);
   line-height: 1.6;
 }
 .cairn-proof__cite {
-  font-size: 0.75rem;
+  font-size: var(--cairn-text-xs);
   vertical-align: super;
   color: var(--cairn-accent-ink);
   font-weight: 700;
@@ -667,7 +718,7 @@ pre.cairn-code {
   background: var(--cairn-surface-sunken);
   border-radius: var(--cairn-radius);
   padding: 0.875rem 1rem;
-  font-size: 0.875rem;
+  font-size: var(--cairn-text-xs);
 }
 .cairn-proof__evidence p {
   margin: 0.375rem 0 0;
@@ -693,14 +744,14 @@ pre.cairn-code {
 .cairn-pillar__body {
   margin: 0;
   color: var(--cairn-ink-muted);
-  font-size: 0.9375rem;
+  font-size: var(--cairn-text-sm);
 }
 
 .cairn-landing-footer {
   border-top: 1px solid var(--cairn-border);
   padding-block: 1.75rem 2.5rem;
   color: var(--cairn-ink-subtle);
-  font-size: 0.875rem;
+  font-size: var(--cairn-text-xs);
   display: flex;
   gap: 1rem;
   flex-wrap: wrap;

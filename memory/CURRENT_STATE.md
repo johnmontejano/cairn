@@ -2,6 +2,108 @@
 
 Last updated: 2026-08-01
 
+## Redesign brief (`docs/REDESIGN_BRIEF.md`) fully implemented, verified, and pushed (2026-08-01)
+
+All four phases landed on `main` in one dedicated session, per the
+pre-authorization in the brief. `pnpm verify` and `pnpm test:e2e` both green
+(59 passed, 1 pre-existing skip — matches the pre-existing baseline exactly).
+
+**Phase 0 — foundation.** New cool grey/indigo palette in
+`packages/ui/src/tokens.css` (moved off the cream/terracotta pairing the brief
+diagnosed as the most recognisable machine-generated signature in the
+category), a five-step type scale (`--cairn-text-xs/-sm/-md/-lg/-xl`), serif
+headings (`--cairn-font-serif`, previously defined but only used on the
+landing page), and differentiated radius (`.cairn-card` dropped from
+`--cairn-radius-lg` to the base radius; `.cairn-badge` moved from a 999px pill
+to `--cairn-radius-sm`, matching "chips, badges, and inline code" in the
+brief). Every new light/dark value was computed against WCAG 2.2 AA, not
+eyeballed — done directly rather than delegated, since the brief's own
+"meets WCAG AA" comment needed to stay literally true. Sanity-checked live in
+the browser, light and dark, across the landing page, `/welcome`, `/sources`,
+and `/memory` before touching any page-level work, per the brief's explicit
+sequencing.
+
+**Phases 1–3 — items 6–18.** Implemented via six file-scoped agents running
+mostly in parallel (three fully independent; three sequenced through shared
+edits to `apps/web/src/server/views.ts`), then an automated verify-and-fix
+pass. Highlights:
+
+- **Item 6** — `/welcome` now polls itself (`apps/web/src/components/live-progress.tsx`,
+  the first client-side polling pattern in this app) instead of asking a
+  person to refresh manually.
+- **Item 7** — `/memory` groups proposed, non-conflicted, normal-sensitivity
+  cards by source item and adds a "Keep all N from this source" bulk action
+  (`keepAllFromSource` in `apps/web/src/server/actions.ts`) alongside, never
+  instead of, full per-item Keep/Edit/Remove. Verified live: kept 21 of 22
+  seeded items in one click, the one conflicted/unrelated item stayed
+  individual, counts updated correctly.
+- **Items 8–9** — `/home` leads with a prose identity summary
+  (`assembleIdentity()`, previously only used by Settings and MCP `whoami`)
+  instead of a raw count, names missing sections inline, and falls back to
+  the old count-only copy when identity is empty or too thin. The "Use this
+  in an AI tool" card promotes to first position with accent styling once 5+
+  memories are approved and no connection exists yet, and retires to a
+  low-key link once one does.
+- **Items 10, 15** — a standing "still organizing your memory" pill and a
+  persistent setup-incomplete banner in `apps/web/src/components/chrome.tsx`
+  (now an async Server Component with its own lightweight `loadShellStatus`
+  query, one COUNT-style read, not the full `loadOverview`).
+- **Items 11–13, 16** — per-client connect actions on `/connections`; an
+  honest "syncing is on demand, not scheduled" note and a recommended-vs-
+  minimum source-count message on `/sources`; providers split into "available"
+  and "not available on this deployment" in cloud mode, dropping the dishonest
+  demo-form affordance for providers that can never work there.
+- **Items 17–18** — `loadSettings`' `memoryCount` query is now project-scoped
+  like `loadOverview` and `buildExportPayload` already were (the root cause of
+  the "/home says 1, backup held 2" discrepancy from the 2026-08-01 backup
+  drill). `docs/PRIVACY_MATRIX.md` no longer names a Railway worker that isn't
+  deployed; states plainly that the web process drains its own queue.
+- **Item 14** — already implemented before this session; verified still
+  correct, no rebuild needed.
+
+**Two real bugs found in review, not caught by any automated check, fixed
+before pushing:**
+
+1. The persistent setup banner (item 15) was driven by `setupState().settled`,
+   which is `input.settledAt !== null` — and nothing in the codebase writes
+   `workspaceSettings.setupSettledAt` anywhere, ever (confirmed by grep). That
+   meant the banner would have shown on every page, for every workspace,
+   forever — including the owner's own live production account. Fixed by
+   driving it off `blockedBecause` instead (null exactly when there's nothing
+   concrete left to do), which is the signal the domain model actually
+   modeled for this. `apps/web/src/components/chrome.tsx`.
+2. The new `/home` identity lede was, live, an unreadable duplicated wall of
+   text: `assembleIdentity()`'s title/value "stutter" dedup
+   (`packages/search/src/identity.ts`) compares `value.startsWith(title)`,
+   but a title truncated with a trailing ellipsis (common — it's what long
+   card titles look like elsewhere in the app) never literally prefixes the
+   value, so almost every bullet doubled as "truncated-title…: full-value".
+   Harmless in the old machine/textarea-only consumers, glaring once
+   flattened into human-reading prose for the first time. Fixed the dedup to
+   strip a trailing ellipsis before comparing (benefits every consumer, not
+   just the new lede), added a regression test
+   (`tests/unit/identity.test.ts`), and separately capped the lede at ~220
+   chars ending on a sentence boundary — the full breakdown already exists in
+   the "What I know" section directly below, so the lede only needed to be a
+   teaser, not a second copy of the whole thing.
+
+**One transient false alarm, not a bug:** a full `pnpm test:e2e` run showed 46
+failures across totally unrelated spec files (landing page, MCP OAuth,
+accessibility). Diagnosed as cross-session interference, not a regression —
+this machine had multiple other Claude Code sessions active concurrently in
+this same checkout (confirmed via `ps aux`), and Playwright's local
+`reuseExistingServer: true` plus a shared on-disk `.cairn-e2e` PGlite
+directory means a concurrent session's own dev/test server can be silently
+reused or raced against. Re-ran in isolation immediately after: 59 passed, 1
+pre-existing skip, 0 failures — exact match to baseline, confirming the code
+was never actually broken.
+
+**Not done — deliberately out of scope, worth a look later:** the
+correctness-fixes agent noticed `loadSettings`' adjacent `sourceCount` and
+`identityItems` queries have the same unscoped-by-project pattern as the
+`memoryCount` bug just fixed, but the brief named only `memoryCount` — left
+untouched rather than expanding scope unrequested.
+
 ## Remote MCP OAuth built and verified end to end (2026-08-01)
 
 NEXT_STEPS item 7 is done. It was described as "built but never run against a

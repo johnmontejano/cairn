@@ -65,7 +65,7 @@
 .cairn-button--lg {
   min-height: 52px;
   padding: 0.875rem 1.5rem;
-  font-size: 1.0625rem;
+  font-size: var(--cairn-text-md);
 }
 
 .cairn-button--primary {
@@ -117,7 +117,7 @@
 .cairn-card {
   background: var(--cairn-surface);
   border: 1px solid var(--cairn-border);
-  border-radius: var(--cairn-radius-lg);
+  border-radius: var(--cairn-radius);
   padding: 1.25rem 1.375rem;
   box-shadow: var(--cairn-shadow-sm);
 }
@@ -130,7 +130,8 @@
   margin-bottom: 0.875rem;
 }
 .cairn-card__title {
-  font-size: 1.0625rem;
+  font-family: var(--cairn-font-serif);
+  font-size: var(--cairn-text-md);
   font-weight: 600;
   margin: 0;
   color: var(--cairn-ink);
@@ -138,7 +139,7 @@
 .cairn-card__description {
   margin: 0.25rem 0 0;
   color: var(--cairn-ink-muted);
-  font-size: 0.9375rem;
+  font-size: var(--cairn-text-sm);
 }
 .cairn-card__actions {
   display: flex;
@@ -153,8 +154,8 @@
   align-items: center;
   gap: 0.25rem;
   padding: 0.1875rem 0.5rem;
-  border-radius: 999px;
-  font-size: 0.8125rem;
+  border-radius: var(--cairn-radius-sm);
+  font-size: var(--cairn-text-xs);
   font-weight: 550;
   line-height: 1.4;
   white-space: nowrap;
@@ -200,12 +201,12 @@
 }
 .cairn-field__hint {
   margin: 0;
-  font-size: 0.9375rem;
+  font-size: var(--cairn-text-sm);
   color: var(--cairn-ink-muted);
 }
 .cairn-field__error {
   margin: 0;
-  font-size: 0.9375rem;
+  font-size: var(--cairn-text-sm);
   font-weight: 550;
   color: var(--cairn-danger);
 }
@@ -254,7 +255,7 @@
 }
 .cairn-callout__body {
   color: inherit;
-  font-size: 0.9375rem;
+  font-size: var(--cairn-text-sm);
 }
 .cairn-callout__body > :first-child {
   margin-top: 0;
@@ -293,8 +294,9 @@
   background: var(--cairn-surface-sunken);
 }
 .cairn-empty__title {
+  font-family: var(--cairn-font-serif);
   margin: 0 0 0.5rem;
-  font-size: 1.0625rem;
+  font-size: var(--cairn-text-md);
   color: var(--cairn-ink);
 }
 .cairn-empty__body {
@@ -348,7 +350,7 @@
   animation: cairn-pulse 1.6s ease-in-out infinite;
 }
 .cairn-progress__status {
-  font-size: 0.9375rem;
+  font-size: var(--cairn-text-sm);
   color: var(--cairn-ink-muted);
 }
 @keyframes cairn-pulse {
@@ -375,7 +377,7 @@
   display: flex;
   align-items: center;
   font-weight: 550;
-  font-size: 0.9375rem;
+  font-size: var(--cairn-text-sm);
   color: var(--cairn-ink-muted);
   border-radius: var(--cairn-radius);
 }
@@ -387,7 +389,7 @@
 }
 .cairn-disclosure__body {
   padding: 0 0.875rem 0.875rem;
-  font-size: 0.9375rem;
+  font-size: var(--cairn-text-sm);
   color: var(--cairn-ink-muted);
 }
 
@@ -406,7 +408,7 @@
 }
 .cairn-dl__term {
   color: var(--cairn-ink-muted);
-  font-size: 0.9375rem;
+  font-size: var(--cairn-text-sm);
 }
 .cairn-dl__detail {
   margin: 0;

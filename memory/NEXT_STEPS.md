@@ -131,31 +131,40 @@ before storing anyone else's data.
 ## Onboarding gaps worth closing next
 
 From `docs/ONBOARDING_BENCHMARK.md`, in the order that loses the fewest people.
-Gap A is closed by the OAuth work; these are the rest, with proposals already
-written against Cairn's existing components.
+Gap A is closed by the OAuth work.
 
-- **B — waiting is unbounded and needs a manual refresh.** `/welcome` says
-  "Refresh this page in a moment." Auto-refresh while `runningJobs > 0` and show
-  candidates as they land. Small, and it sits at the exact moment the product
-  has taken something and given nothing back.
-- **D — `/home` leads with counts, not with what Cairn knows about you.**
-  `assembleIdentity()` already builds the summary and Settings already edits it;
-  it is simply not on the page people land on. Small.
-- **F — providers that cannot work on this deployment are still offered** with
-  an "Add in demo form" button. Small.
-- **G — nothing invites connecting an AI once there is memory worth connecting.**
-  Promote it to a single primary call to action once `approvedCount` crosses a
-  threshold, and retire it once a connection exists. Small.
-- **C — 49 candidates from one Gmail sync, each needing its own decision.**
-  Group the review queue by source with "Keep all from this source", excluding
-  anything conflicted or sensitive. A day.
-- **E — scope is per-connection, not per-content.** Let a connection choose
-  which memory types it may read; `mcp_clients.projectIds` already exists and is
-  always written `null`. A day.
+- ~~**B — waiting is unbounded and needs a manual refresh.**~~ Done
+  2026-08-01, redesign brief item 6. `/welcome` polls itself instead.
+- ~~**D — `/home` leads with counts, not with what Cairn knows about you.**~~
+  Done 2026-08-01, redesign brief item 8.
+- ~~**F — providers that cannot work on this deployment are still offered.**~~
+  Done 2026-08-01, redesign brief item 16.
+- ~~**G — nothing invites connecting an AI once there is memory worth
+  connecting.**~~ Done 2026-08-01, redesign brief item 9.
+- ~~**C — 49 candidates from one Gmail sync, each needing its own
+  decision.**~~ Done 2026-08-01, redesign brief item 7. "Keep all from this
+  source" on `/memory`, excluding conflicted/sensitive items, verified live.
+- **E — scope is per-connection, not per-content.** Still open, not part of
+  the redesign brief. Let a connection choose which memory types it may read;
+  `mcp_clients.projectIds` already exists and is always written `null`. A day.
 
-Also open, found during the backup drill: `/home`'s `approvedCount` and what the
-vault backs up appear to count different things — the source said "1 thing
-saved" while the backup held and restored 2 memories.
+~~Also open, found during the backup drill: `/home`'s `approvedCount` and what
+the vault backs up appear to count different things.~~ Done 2026-08-01,
+redesign brief item 17 — `loadSettings`' `memoryCount` query was the one
+unscoped-by-project query of the three; now matches. See
+`memory/CURRENT_STATE.md`.
+
+**The whole redesign brief (`docs/REDESIGN_BRIEF.md`, all four phases,
+items 1–18) is done, verified, and pushed to `main` as of 2026-08-01.** See
+`memory/CURRENT_STATE.md` for the full breakdown, including two real bugs
+found and fixed in review (a setup banner that would have nagged forever, and
+a garbled identity-summary lede) that no automated check caught.
+
+**One small, deliberately-not-expanded follow-up found along the way:**
+`loadSettings`' `sourceCount` and `identityItems` queries
+(`apps/web/src/server/views.ts`) have the same unscoped-by-project pattern the
+`memoryCount` fix above just corrected. The brief named only `memoryCount`;
+worth a look, not urgent — same fix shape if it turns out to matter.
 
 ## Open questions
 

@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { CONNECTOR_DESCRIPTIONS, connectorStatus } from '@cairn/connectors';
 import {
   auditRepo,
@@ -20,13 +20,17 @@ import {
   type MemoryItem,
   type MemoryType,
   type RetrievedPassage,
+  type SaveBackMode,
+  type SetupState,
+  type SetupStep,
   type SourceConnection,
   type SourceItem,
   type SourceProvider,
   type VaultVersion,
   CANONICAL_DOCS,
+  setupState,
 } from '@cairn/domain';
-import { assembleIdentity, searchMemory } from '@cairn/search';
+import { assembleIdentity, missingIdentitySections, searchMemory } from '@cairn/search';
 import { PostgresMemoryVault } from '@cairn/vault';
 import type { RequestContext } from './context';
 
@@ -114,6 +118,23 @@ export interface OverviewView {
   runningJobs: number;
   failedJobs: number;
   conflictCount: number;
+  /**
+   * The same prose summary a connected AI reads first (`assembleIdentity`,
+   * also used by `loadSettings`), built from the `approved` items already
+   * loaded above rather than a second query. `summary` is `''` when nothing
+   * approved yet matches an identity section — the home page falls back to
+   * its count-only copy in that case rather than showing a stub. `missing`
+   * names the identity sections nothing approved yet covers, so the page can
+   * say what would make the summary more complete.
+   */
+  identity: { summary: string; missing: MemoryType[] };
+  /**
+   * Whether an unrevoked MCP client already exists for this workspace — the
+   * same `!client.revokedAt` notion of "active" the Connected AIs page uses.
+   * Lets the home page retire its "connect an AI" prompt once one is already
+   * connected, instead of continuing to suggest it.
+   */
+  hasConnectedAi: boolean;
 }
 
 const RECENT_DECISION_WINDOW_MS = 2 * 60_000;
@@ -158,14 +179,35 @@ export async function loadOverview(context: RequestContext): Promise<OverviewVie
             eq(schema.memoryConflicts.status, 'open'),
           ),
         );
+      // Existence only, not a count or the client list itself — same shape as
+      // the `liveConnections` check below in `loadShellStatus`, kept to one
+      // row so this stays cheap on a page that loads on every visit.
+      const activeClients = await tx
+        .select({ id: schema.mcpClients.id })
+        .from(schema.mcpClients)
+        .where(
+          and(
+            eq(schema.mcpClients.workspaceId, context.actor.workspaceId),
+            isNull(schema.mcpClients.revokedAt),
+          ),
+        )
+        .limit(1);
       return {
         sourceCount: sources?.n ?? 0,
         runningJobs: jobs.filter((j) => j.state === 'queued' || j.state === 'running').length,
         failedJobs: jobs.filter((j) => j.state === 'dead').length,
         conflictCount: conflicts?.n ?? 0,
+        hasConnectedAi: activeClients.length > 0,
       };
     }),
   ]);
+
+  // Reuses the same `approved` list already loaded above rather than a
+  // second `listMemoryItems` query — `loadSettings` builds this identically
+  // from a freshly queried list, but this caller already has one in hand.
+  const assembledIdentity = assembleIdentity(
+    approved.map((c) => ({ type: c.item.type, title: c.item.title, value: c.item.value })),
+  );
 
   const since = Date.now() - RECENT_DECISION_WINDOW_MS;
   const crypto = await context.services.keyring.get(context.actor.workspaceId);
@@ -202,6 +244,10 @@ export async function loadOverview(context: RequestContext): Promise<OverviewVie
       }))
       .sort((a, b) => b.count - a.count),
     approvedCount: approved.length,
+    identity: {
+      summary: assembledIdentity.markdown,
+      missing: missingIdentitySections(assembledIdentity.present),
+    },
     ...counts,
     latestVersion,
   };
@@ -424,6 +470,7 @@ export async function loadSettings(context: RequestContext): Promise<SettingsVie
       .where(
         and(
           eq(schema.memoryItems.workspaceId, context.actor.workspaceId),
+          eq(schema.memoryItems.projectId, context.project.id),
           eq(schema.memoryItems.status, 'approved'),
         ),
       );
@@ -491,3 +538,83 @@ export function toCitations(card: MemoryCardView): Citation[] {
 }
 
 export { inArray };
+
+/* ------------------------------------------------------------------ *
+ * Shell status
+ * ------------------------------------------------------------------ */
+
+export interface ShellStatusView {
+  /**
+   * Jobs still queued or running for the current project — the same signal
+   * `loadOverview.runningJobs` already surfaces on /home and /welcome
+   * through `ProgressSteps`/`Callout`. Recomputed here with a single COUNT
+   * rather than routed through `loadOverview`, because `loadShellStatus`
+   * runs on every page load via `AppShell`, not just on the pages that show
+   * the full picture.
+   */
+  runningJobs: number;
+  /**
+   * Where first-run setup stands, per `setupState()` in `@cairn/domain`.
+   * Ported from the same DB reads the MCP `setup_status` tool uses
+   * (`packages/mcp/src/server.ts`) — nothing in the web app read this
+   * before now.
+   */
+  setup: SetupState;
+}
+
+/**
+ * Cheap, cross-page status for `AppShell`.
+ *
+ * Two things worth surfacing before anyone asks a question that would reveal
+ * them: whether Cairn is still working through what it was given, and
+ * whether first-run setup — driven from inside whichever AI tool someone
+ * connected, never from a web wizard — ever settled. Kept deliberately
+ * minimal (one COUNT, one settings row, one small connections list, no
+ * decryption, no memory reads) rather than reusing `loadOverview`, since this
+ * runs on every request regardless of which page it is.
+ */
+export async function loadShellStatus(context: RequestContext): Promise<ShellStatusView> {
+  return withTenant(context.services.handle, context.actor, async (tx) => {
+    const [jobRows, settingsRows, liveConnections] = await Promise.all([
+      tx
+        .select({ n: sql<number>`count(*)::int` })
+        .from(schema.jobs)
+        .where(
+          and(
+            eq(schema.jobs.workspaceId, context.actor.workspaceId),
+            eq(schema.jobs.projectId, context.project.id),
+            inArray(schema.jobs.state, ['queued', 'running']),
+          ),
+        ),
+      tx
+        .select()
+        .from(schema.workspaceSettings)
+        .where(eq(schema.workspaceSettings.workspaceId, context.actor.workspaceId))
+        .limit(1),
+      // Counted now rather than trusted from storage, same as `setup_status`:
+      // a count written down at the moment someone passed the gate would
+      // still read as passed after they disconnected everything.
+      tx
+        .select({ id: schema.sourceConnections.id })
+        .from(schema.sourceConnections)
+        .where(
+          and(
+            eq(schema.sourceConnections.workspaceId, context.actor.workspaceId),
+            eq(schema.sourceConnections.state, 'active'),
+            isNull(schema.sourceConnections.disconnectedAt),
+          ),
+        ),
+    ]);
+    const settings = settingsRows[0];
+
+    return {
+      runningJobs: jobRows[0]?.n ?? 0,
+      setup: setupState({
+        step: (settings?.setupStep as SetupStep | null) ?? null,
+        connectedApps: liveConnections.length,
+        saveBackMode: (settings?.saveBackMode as SaveBackMode) ?? 'important',
+        settledAt: settings?.setupSettledAt ?? null,
+      }),
+    };
+  });
+}

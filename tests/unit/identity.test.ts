@@ -52,6 +52,20 @@ describe('assembleIdentity', () => {
     expect(markdown).not.toContain('British spelling: British spelling throughout.');
   });
 
+  it('does not stutter when the title is the value truncated with an ellipsis', () => {
+    const { markdown } = assembleIdentity([
+      item(
+        'decision',
+        'We decided to sign the Mill Street lease rather than the…',
+        'We decided to sign the Mill Street lease rather than the unit by the station.',
+      ),
+    ]);
+    expect(markdown).toContain(
+      '- We decided to sign the Mill Street lease rather than the unit by the station.',
+    );
+    expect(markdown).not.toContain('the…: We decided');
+  });
+
   it('stops at a section boundary rather than cutting mid-sentence', () => {
     const long = 'x'.repeat(400);
     const { markdown, truncated } = assembleIdentity([

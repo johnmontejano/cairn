@@ -52,7 +52,13 @@ export function ActionForm({
   action: ActionFn;
   csrf: string;
   children: React.ReactNode;
-  hidden?: Record<string, string | undefined>;
+  /**
+   * A value of `string[]` renders one hidden input per entry, all sharing the
+   * same `name` — the same shape `formData.getAll(name)` reads on a native
+   * multi-file input, used here so a bulk action can carry a list of ids
+   * without a client-side loop submitting one request per id.
+   */
+  hidden?: Record<string, string | string[] | undefined>;
   className?: string;
   onDone?: (result: ActionResult) => void;
   successTone?: 'good' | 'info';
@@ -71,9 +77,13 @@ export function ActionForm({
   return (
     <form action={formAction} className={className}>
       <input type="hidden" name="csrf" value={csrf} />
-      {Object.entries(hidden ?? {}).map(([name, value]) =>
-        value === undefined ? null : <input key={name} type="hidden" name={name} value={value} />,
-      )}
+      {Object.entries(hidden ?? {}).flatMap(([name, value]) => {
+        if (value === undefined) return [];
+        const values = Array.isArray(value) ? value : [value];
+        return values.map((v, index) => (
+          <input key={`${name}-${index}`} type="hidden" name={name} value={v} />
+        ));
+      })}
       {children}
       {state.error ? (
         <div style={{ marginTop: '0.75rem' }}>

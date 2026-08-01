@@ -449,6 +449,68 @@ export async function keepMemory(_prev: ActionResult, formData: FormData): Promi
   });
 }
 
+/**
+ * Approving every eligible proposed memory from one source in a single request.
+ *
+ * The page only ever sends ids it already decided are eligible — proposed,
+ * not conflicted, not sensitive — so this trusts the list the same way
+ * {@link keepMemory} trusts a single id: `withTenant` inside `approveMemoryItem`
+ * scopes every write to the caller's own workspace regardless of what is
+ * submitted. This runs the same per-item approval `keepMemory` uses, in a
+ * loop, rather than adding a second code path — the fix for "49 individual
+ * decisions" is one request instead of 49, not a different approval rule.
+ * One item failing (e.g. it was removed by someone else a moment earlier)
+ * does not stop the rest; the message reports what actually happened.
+ */
+export async function keepAllFromSource(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  return guard(async () => {
+    await assertCsrf(formData);
+    const context = await requireContext();
+    const project = await resolveProject(context, String(formData.get('projectId') ?? ''));
+    const memoryItemIds = [...new Set(formData.getAll('memoryItemId').map(String).filter(Boolean))];
+    if (memoryItemIds.length === 0) return { error: 'Nothing to keep.' };
+
+    let kept = 0;
+    let firstError: string | null = null;
+    for (const memoryItemId of memoryItemIds) {
+      try {
+        await approveMemoryItem(context.services, context.actor, {
+          memoryItemId,
+          projectId: project.id,
+          authorLabel: context.displayName ?? context.email,
+        });
+        kept += 1;
+      } catch (error) {
+        if (isRedirectError(error)) throw error;
+        firstError =
+          error instanceof DomainError
+            ? error.userMessage
+            : 'Something went wrong for one of them.';
+      }
+    }
+    // One revalidate for the whole batch, not one per item and not one per
+    // client round trip — this is what makes "Keep all" a single request.
+    revalidateMemoryViews();
+
+    if (kept === 0) {
+      return { error: firstError ?? 'Could not keep any of them. Please try again.' };
+    }
+    const skipped = memoryItemIds.length - kept;
+    return {
+      ok: true,
+      message:
+        skipped === 0
+          ? `Kept ${kept} from this source. Reversible — remove any of them below, or from History.`
+          : `Kept ${kept} of ${memoryItemIds.length} from this source (${skipped} could not be kept${
+              firstError ? `: ${firstError}` : ''
+            }). Reversible — remove any of them below, or from History.`,
+    };
+  });
+}
+
 export async function removeMemory(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   return guard(async () => {
     await assertCsrf(formData);

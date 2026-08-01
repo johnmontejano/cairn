@@ -79,7 +79,13 @@ export function assembleIdentity(
         const value = oneLine(item.value);
         const title = oneLine(item.title);
         // A title that merely restates the value would read as a stutter.
-        return value.toLowerCase().startsWith(title.toLowerCase())
+        // Titles are often the value itself cut short with a trailing
+        // ellipsis (see card display truncation) — strip that before
+        // comparing, or the ellipsis breaks the prefix match and a title
+        // that is genuinely just a truncated copy of the value gets kept
+        // and repeated in full right next to it.
+        const comparableTitle = title.replace(/[.…]+$/, '');
+        return value.toLowerCase().startsWith(comparableTitle.toLowerCase())
           ? `- ${value}`
           : `- ${title}: ${value}`;
       }),

@@ -23,7 +23,6 @@ In demo mode nothing leaves the machine unless you connect an AI tool.
 | ------------------ | --------------------- | ---------------------------------- | -------------------------------------- |
 | Sign-in            | WorkOS AuthKit        | Email address, name                | Yes — identity only                    |
 | Application code   | Vercel                | Everything in a request            | Yes — this is the trusted core         |
-| Worker             | Railway               | Everything it processes            | Yes — same trust as above              |
 | Database           | Supabase PostgreSQL   | Ciphertext + metadata              | **No**, except metadata and embeddings |
 | Object storage     | Supabase Storage      | Encrypted snapshots                | No                                     |
 | Extraction         | OpenAI Responses API  | Document text, with `store: false` | **Yes**                                |
@@ -31,6 +30,13 @@ In demo mode nothing leaves the machine unless you connect an AI tool.
 | Answering          | OpenAI Responses API  | Retrieved excerpts + question      | **Yes**                                |
 | Error reports      | Sentry (optional)     | Exception type and message only    | No content                             |
 | Connected AI tools | Claude, Codex, others | Retrieved memory and citations     | **Yes**                                |
+
+No separate worker is deployed today: the Vercel-hosted web process drains the
+job queue itself (`CAIRN_INLINE_JOBS=always`), so queued work stays inside the
+same trust boundary as the "Application code | Vercel" row above rather than
+reaching a distinct Railway processor. The `apps/worker/` code exists in the
+repository and builds, ready to run as an independent process if a deployment
+ever splits it out — it is just not part of the current deployment.
 
 ## What is stored in plaintext, deliberately
 

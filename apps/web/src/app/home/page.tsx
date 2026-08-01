@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { CANONICAL_DOCS } from '@cairn/domain';
 import { Badge, Callout, Card, EmptyState, ProgressSteps } from '@cairn/ui';
 import { AppShell } from '@/components/chrome';
 import { MemoryCard } from '@/components/memory-card';
@@ -9,6 +10,69 @@ import { loadOverview } from '@/server/views';
 
 export const metadata = { title: 'Home' };
 export const dynamic = 'force-dynamic';
+
+/**
+ * Below this many characters, `overview.identity.summary` reads as a
+ * fragment rather than a sentence (e.g. one short preference on its own) —
+ * the plain count lede below is the clearer "first thing read" until there
+ * is enough for the identity summary to stand on its own.
+ */
+const MIN_IDENTITY_LEDE_CHARS = 40;
+
+/**
+ * A lede is a teaser, not the whole story — the "What I know" section below
+ * already lists every saved item by category. Past this many characters the
+ * lede is cut at the nearest earlier sentence boundary, never mid-sentence.
+ */
+const MAX_IDENTITY_LEDE_CHARS = 220;
+
+/**
+ * Once this many memories are approved, a connected AI is likely to have
+ * something real to answer with — enough saved that answering something
+ * plausible is likely.
+ */
+const CONNECT_CTA_APPROVED_THRESHOLD = 5;
+
+/**
+ * `assembleIdentity` (in `@cairn/search`) builds its summary for a
+ * connected AI: headed sections, `<!-- cairn:type -->` markers meant to
+ * survive a round trip, one bullet per item. Read by a person as the page
+ * lede, the markers and `##`/`-` syntax would just be visible clutter, so
+ * this is the one place that turns the same markdown into a plain sentence
+ * for a human reader instead.
+ */
+function identityLedeText(markdown: string): string {
+  const full = markdown
+    .split('\n')
+    .filter((line) => line.trim().length > 0 && !line.startsWith('<!--'))
+    .map((line) => {
+      const heading = line.match(/^##\s*(.+)$/);
+      if (heading) return `${heading[1]}:`;
+      const item = line.replace(/^- /, '').trim();
+      return /[.!?]$/.test(item) ? item : `${item}.`;
+    })
+    .join(' ');
+
+  if (full.length <= MAX_IDENTITY_LEDE_CHARS) return full;
+
+  // A lede is a teaser: cut at the last full sentence that fits, never
+  // mid-sentence. Everything else is already listed in "What I know" below.
+  const window = full.slice(0, MAX_IDENTITY_LEDE_CHARS);
+  const lastSentenceEnd = Math.max(
+    window.lastIndexOf('. '),
+    window.lastIndexOf('.', window.length - 1),
+  );
+  return lastSentenceEnd > MIN_IDENTITY_LEDE_CHARS
+    ? window.slice(0, lastSentenceEnd + 1)
+    : `${window.trimEnd()}…`;
+}
+
+/** "a", "a and b", or "a, b, and c" — for naming missing identity sections inline. */
+function joinWithAnd(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+}
 
 export default async function HomePage() {
   const context = await requireContext();
@@ -24,14 +88,41 @@ export default async function HomePage() {
     redirect('/welcome');
   }
 
+  // A prose summary of who the person is beats a raw count as the first
+  // thing read here — but only once there is enough of one to read as a
+  // sentence rather than a stub. Below that, or for a workspace with
+  // nothing approved yet, today's count-only copy is what leads instead.
+  const identityLede =
+    overview.identity.summary.length >= MIN_IDENTITY_LEDE_CHARS
+      ? identityLedeText(overview.identity.summary)
+      : null;
+  const missingLabels = overview.identity.missing.map((type) =>
+    CANONICAL_DOCS[type].title.toLowerCase(),
+  );
+  const countLede = `${overview.approvedCount} thing${overview.approvedCount === 1 ? '' : 's'} saved, from ${overview.sourceCount} source${overview.sourceCount === 1 ? '' : 's'}.`;
+
   return (
     <AppShell current="/home" email={context.email}>
       <h1 className="cairn-page-title">{name}</h1>
-      <p className="cairn-page-lede">
-        {overview.approvedCount === 0
-          ? 'Nothing is saved yet. Review what was found below and keep the parts that are right.'
-          : `${overview.approvedCount} thing${overview.approvedCount === 1 ? '' : 's'} saved, from ${overview.sourceCount} source${overview.sourceCount === 1 ? '' : 's'}.`}
-      </p>
+      {identityLede ? (
+        <>
+          <p className="cairn-page-lede">
+            {identityLede}
+            {missingLabels.length > 0
+              ? ` Nothing saved yet about ${joinWithAnd(missingLabels)}.`
+              : ''}
+          </p>
+          <p className="cairn-meta" style={{ marginTop: '-1rem', marginBottom: '1.75rem' }}>
+            {countLede}
+          </p>
+        </>
+      ) : (
+        <p className="cairn-page-lede">
+          {overview.approvedCount === 0
+            ? 'Nothing is saved yet. Review what was found below and keep the parts that are right.'
+            : countLede}
+        </p>
+      )}
 
       {/* A progress bar says work is happening. It does not say what that means
           for an answer asked right now, which is the thing worth knowing: a
@@ -154,24 +245,58 @@ export default async function HomePage() {
         <h2 id="next" className="cairn-section-title">
           What next
         </h2>
-        <div className="cairn-choice-grid">
-          <Link href="/ask" className="cairn-choice-card">
-            <span className="cairn-choice-card__title">Ask a question</span>
-            <span className="cairn-choice-card__body">
-              Every answer shows the exact words it came from.
-            </span>
-          </Link>
-          <Link href="/sources" className="cairn-choice-card">
-            <span className="cairn-choice-card__title">Add more</span>
-            <span className="cairn-choice-card__body">Paste, upload, or connect an app.</span>
-          </Link>
-          <Link href="/connections" className="cairn-choice-card">
-            <span className="cairn-choice-card__title">Use this in an AI tool</span>
-            <span className="cairn-choice-card__body">
-              Let a tool you already use look things up here. Reversible at any time.
-            </span>
-          </Link>
-        </div>
+        {overview.hasConnectedAi ? (
+          // A connection already exists, so the pitch for one has done its
+          // job and retires rather than continuing to compete for attention
+          // next to the two choices that are still live either way.
+          <>
+            <div className="cairn-choice-grid">
+              <Link href="/ask" className="cairn-choice-card">
+                <span className="cairn-choice-card__title">Ask a question</span>
+                <span className="cairn-choice-card__body">
+                  Every answer shows the exact words it came from.
+                </span>
+              </Link>
+              <Link href="/sources" className="cairn-choice-card">
+                <span className="cairn-choice-card__title">Add more</span>
+                <span className="cairn-choice-card__body">Paste, upload, or connect an app.</span>
+              </Link>
+            </div>
+            <p className="cairn-meta" style={{ marginTop: '0.875rem' }}>
+              <Link href="/connections">Manage your connected AI</Link>
+            </p>
+          </>
+        ) : (
+          <div className="cairn-choice-grid">
+            {overview.approvedCount >= CONNECT_CTA_APPROVED_THRESHOLD ? (
+              <Link href="/connections" className="cairn-choice-card cairn-choice-card--accent">
+                <span className="cairn-choice-card__title">Use this in an AI tool</span>
+                <span className="cairn-choice-card__body">
+                  You have enough saved that a connected tool can answer something real. Reversible
+                  at any time.
+                </span>
+              </Link>
+            ) : null}
+            <Link href="/ask" className="cairn-choice-card">
+              <span className="cairn-choice-card__title">Ask a question</span>
+              <span className="cairn-choice-card__body">
+                Every answer shows the exact words it came from.
+              </span>
+            </Link>
+            <Link href="/sources" className="cairn-choice-card">
+              <span className="cairn-choice-card__title">Add more</span>
+              <span className="cairn-choice-card__body">Paste, upload, or connect an app.</span>
+            </Link>
+            {overview.approvedCount < CONNECT_CTA_APPROVED_THRESHOLD ? (
+              <Link href="/connections" className="cairn-choice-card">
+                <span className="cairn-choice-card__title">Use this in an AI tool</span>
+                <span className="cairn-choice-card__body">
+                  Let a tool you already use look things up here. Reversible at any time.
+                </span>
+              </Link>
+            ) : null}
+          </div>
+        )}
       </section>
     </AppShell>
   );

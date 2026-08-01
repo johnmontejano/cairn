@@ -1,5 +1,9 @@
 import { CONNECTOR_DESCRIPTIONS } from '@cairn/connectors';
-import type { SourceProvider } from '@cairn/domain';
+import {
+  MINIMUM_CONNECTED_APPS,
+  RECOMMENDED_CONNECTED_APPS,
+  type SourceProvider,
+} from '@cairn/domain';
 import { Badge, Callout, Card, Disclosure, EmptyState } from '@cairn/ui';
 import { SUPPORTED_UPLOAD_EXTENSIONS } from '@cairn/ingestion';
 import { AppShell } from '@/components/chrome';
@@ -43,11 +47,41 @@ function sinceInWords(when: Date, now = new Date()): string {
   return days > 30 ? 'over a month ago' : `${days} day${days === 1 ? '' : 's'} ago`;
 }
 
+/**
+ * "Works from N, better from 3" — said once, plainly.
+ *
+ * Two is where the product proves the mechanism; three is where the answers
+ * actually get good. Neither number is a failure state, so the wording never
+ * tells anyone they are short of anything — it just says what is true at each
+ * count.
+ */
+function connectedAppsNote(count: number): string {
+  const sources = (n: number) => `${n} source${n === 1 ? '' : 's'}`;
+  if (count >= RECOMMENDED_CONNECTED_APPS) return `${sources(count)} connected.`;
+  if (count === 0) {
+    return `Nothing connected yet. Works from ${MINIMUM_CONNECTED_APPS}, and gets noticeably better from ${RECOMMENDED_CONNECTED_APPS}.`;
+  }
+  return `Works from ${sources(count)}. Gets noticeably better from ${RECOMMENDED_CONNECTED_APPS}.`;
+}
+
 export default async function SourcesPage() {
   const context = await requireContext();
   const csrf = await csrfToken();
   const view = await loadSources(context);
+  const { mode } = context.services.config;
   const projectId = context.project.id;
+  // "Live" matches the definition setup_status uses elsewhere: state === 'active'.
+  // A connection that exists but is disconnected or needs reconnecting is not
+  // one of the sources actually feeding memory right now.
+  const connectedCount = view.connections.filter((c) => c.state === 'active').length;
+  // Cloud deployments cannot offer the demo-form affordance for a provider
+  // that is missing required setup — there is no demo to add to there, only a
+  // redeploy that would fix it. Demo mode, and any provider whose status is
+  // 'demo' rather than 'setup-required', keeps the existing behaviour.
+  const unavailableHere = view.available.filter(
+    (entry) => mode === 'cloud' && entry.status === 'setup-required',
+  );
+  const availableToTry = view.available.filter((entry) => !unavailableHere.includes(entry));
 
   return (
     <AppShell current="/sources" email={context.email}>
@@ -86,6 +120,9 @@ export default async function SourcesPage() {
         <h2 id="connections" className="cairn-section-title">
           Connected apps
         </h2>
+        <p style={{ color: 'var(--cairn-ink-muted)', marginTop: 0 }}>
+          {connectedAppsNote(connectedCount)}
+        </p>
 
         {view.connections.length === 0 ? (
           <EmptyState title="Nothing connected">
@@ -105,6 +142,9 @@ export default async function SourcesPage() {
                           ? `Checked ${sinceInWords(connection.lastSyncedAt)}`
                           : 'Not checked yet'}
                       </span>
+                      {connection.state !== 'disconnected' ? (
+                        <span>Only when you click Check for updates — nothing runs on its own</span>
+                      ) : null}
                       {connection.externalAccountLabel ? (
                         <span>{connection.externalAccountLabel}</span>
                       ) : null}
@@ -155,7 +195,7 @@ export default async function SourcesPage() {
           Available to connect
         </h3>
         <div className="cairn-grid">
-          {view.available.map((entry) => (
+          {availableToTry.map((entry) => (
             <Card key={entry.provider}>
               <div className="cairn-card__header">
                 <div>
@@ -193,6 +233,35 @@ export default async function SourcesPage() {
             </Card>
           ))}
         </div>
+
+        {unavailableHere.length > 0 ? (
+          <>
+            <h3 className="cairn-section-title" style={{ marginTop: '1.75rem' }}>
+              Not available on this deployment
+            </h3>
+            <p style={{ color: 'var(--cairn-ink-muted)', marginTop: 0 }}>
+              Whoever runs this copy of the app has not turned these on, and that will not change
+              without a redeploy — there is nothing to try here.
+            </p>
+            <div className="cairn-grid">
+              {unavailableHere.map((entry) => (
+                <Card key={entry.provider}>
+                  <div className="cairn-card__header">
+                    <div>
+                      <h4 className="cairn-card__title">{entry.description.displayName}</h4>
+                      <p className="cairn-card__description">{entry.description.summary}</p>
+                    </div>
+                    <Badge tone="neutral">Not available on this deployment</Badge>
+                  </div>
+                  <Disclosure summary="What it would read, if it were available">
+                    <p>{entry.description.permissionSummary}</p>
+                    <p>{entry.description.disconnectSummary}</p>
+                  </Disclosure>
+                </Card>
+              ))}
+            </div>
+          </>
+        ) : null}
       </section>
 
       <section aria-labelledby="documents" style={{ marginBottom: '2.5rem' }}>
