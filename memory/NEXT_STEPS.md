@@ -58,11 +58,10 @@ works; the tool-to-document mapping is the only untested part, and it cannot
 be written honestly without one live call. Accounts linked during research
 belong to Unabyss's project, not this one.
 
-0a. **Add an identity editor to Settings.** Migration `0005` created the
-`identity_markdown` column and `whoami` already prefers it over the derived
-summary, so this is a form and a server action, not a design problem. It is
-the deliberate replacement for an `update_identity` MCP tool: editing happens
-behind the person's own sign-in rather than from a connected assistant.
+0a. ~~**Add an identity editor to Settings.**~~ Done on 2026-07-31 (commit
+`8566024`). The form starts from the derived summary so editing begins from
+what the machine currently says; saving it empty is the labelled way back to
+automatic.
 
 0. ~~**Create a Pipedream OAuth client.**~~ Done on 2026-07-31. Credentials are
    set in Vercel with `PIPEDREAM_ENVIRONMENT=production`, and the live call

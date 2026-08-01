@@ -284,6 +284,42 @@ completed purely inside the AI tool until either a narrower grantable write
 scope exists or the remaining steps move to Settings. Worth deciding
 deliberately.
 
+## Verified live, as an outsider would use it (2026-07-31, all on `main`)
+
+Everything below was exercised against <https://cairn-web-beta.vercel.app>, not
+against local fixtures.
+
+- **The connect flow works.** Clicking Connect on Gmail produced the Pipedream
+  Connect Link (fresh token, `app=gmail` preselected), a connection row with the
+  external-user credential stored, and a `source.connected` audit event. The
+  bug that blocked it — `connectSource` kept a hand-written provider list that
+  predated Gmail and Calendar — is fixed by validating against the registry the
+  page renders from, with a unit test pinning the connectable set.
+- **An external AI agent can run the whole loop.** Driven with the official MCP
+  SDK over Streamable HTTP and a bearer connection code: all 8 tools listed,
+  `whoami` returned an honestly empty summary naming its missing sections,
+  `setup_status` reported the gate, and `ask_deeply` → `read_deep_answer` came
+  back `ready` on the first 5-second poll with the honest no-evidence answer and
+  `indexing_pending: true` disclosed.
+- **The drain gap is closed.** Nothing ran jobs on the MCP path — only web
+  actions drained, so a deep query from a connected AI would have sat queued
+  until someone unrelated visited the website. The route now drains after every
+  MCP request (awaited; serverless freezes on response). Found by reading before
+  the live test would have hung on it.
+- **The identity editor shipped** (`8566024`): Settings section that starts from
+  the derived summary, replaces it with the person's own words, and clears back
+  to automatic — the deliberate counterpart to keeping `update_identity` off the
+  MCP surface.
+
+**The one remaining user-gated step on connectors:** authorizing an app on the
+minted Connect Link (Google credential entry). Until a real account is linked
+under project `proj_OesEKRE`, `PipedreamConnector.list()` keeps throwing
+setup-required rather than shipping an unexecuted tool-to-document mapping.
+
+**Declined and settled:** replicating Unabyss's visual design (palette,
+illustrations, copy). Functional and structural parity only, per the 2026-07-27
+originality decision. Restated repeatedly on 2026-07-31; not an open item.
+
 ## Not done
 
 - **Sign-in is still `AUTH_PROVIDER=fixture`**, deliberately, so the stack could
