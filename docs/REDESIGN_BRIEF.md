@@ -46,21 +46,73 @@ size honoured throughout. **Keep the architecture. Replace the surface.**
 ## Phase 0 — Foundation
 
 Everything else depends on this, so it goes first and lands as one commit.
+**Concrete values are given below precisely so this phase does not require a
+judgment call or a question back to the owner** — implement these, sanity-check
+them in the browser, adjust only if something actually looks wrong in context.
 
-1. **Replace the palette.** Move off cream/terracotta. The product is a working
-   tool people keep open, not stationery — a cooler or more neutral ground with
-   one deliberate accent reads correctly for the category. Preserve the existing
-   discipline: every foreground/background pair must still meet WCAG 2.2 AA in
-   both themes, and the file's comment saying so must stay true.
-2. **Introduce a real type pairing.** One characterful face for headings used
-   with restraint, one workhorse for body, keep the mono for codes and IDs.
-   Self-host or use a system-safe stack — do not add a font CDN, since the CSP
-   is nonce-based and strict.
+1. **Replace the palette in `packages/ui/src/tokens.css`.** Move off
+   cream/terracotta to a cooler, working-tool ground with one deliberate
+   indigo-blue accent. Every pair below is computed, not eyeballed — each ratio
+   is stated so the file's "meets WCAG 2.2 AA" comment stays literally true.
+
+   Light theme:
+
+   ```css
+   --cairn-paper: #f4f6f8;
+   --cairn-surface: #ffffff;
+   --cairn-surface-sunken: #e9edf0;
+   --cairn-surface-raised: #ffffff;
+
+   --cairn-ink: #14181c; /* 16.5:1 on paper */
+   --cairn-ink-muted: #4b5560; /* 7.0:1 on paper */
+   --cairn-ink-subtle: #5f6a75; /* 5.1:1 on paper */
+
+   --cairn-accent: #3454d1; /* 5.8:1 on paper */
+   --cairn-accent-hover: #2a44ad;
+   --cairn-accent-soft: #e7ecfb;
+   --cairn-accent-ink: #24399e; /* 9.0:1 on paper */
+   ```
+
+   Dark theme:
+
+   ```css
+   --cairn-paper: #10141a;
+   --cairn-surface: #171c22;
+   --cairn-surface-sunken: #0c0f13;
+   --cairn-surface-raised: #1d232b;
+
+   --cairn-ink: #e7ecf2; /* 15.6:1 on paper */
+   --cairn-ink-muted: #a9b4bf; /* 8.8:1 on paper */
+   --cairn-ink-subtle: #7c8892; /* 5.1:1 on paper */
+
+   --cairn-accent: #7c97f0; /* 6.6:1 on paper */
+   --cairn-accent-hover: #94aeff;
+   --cairn-accent-soft: #202a47;
+   --cairn-accent-ink: #aabbf7; /* 9.8:1 on paper */
+   ```
+
+   Leave `--cairn-good/-warn/-danger/-info` and their `-soft` pairs for last —
+   re-tune each against the new paper using the same method (compute the ratio,
+   don't eyeball it), keeping their existing hue families so status still reads
+   as green/amber/red/blue.
+
+2. **Type pairing — use what already exists, unused.** `--cairn-font-serif`
+   (`ui-serif, Georgia, Cambria, 'Times New Roman', serif`) is already defined
+   in `tokens.css` and nothing references it. Use it for `h1`/`h2`/section
+   titles; keep `--cairn-font-sans` for body and controls, `--cairn-font-mono`
+   for codes and IDs. This needs no new font, no CDN, no risk to the
+   nonce-based CSP — it is a one-line change per heading style.
 3. **Build a type scale and stick to it.** Currently sizes are ad hoc per page.
-4. **Differentiate elevation and radius** so primary surfaces outrank secondary
-   ones instead of every card being peers.
-5. **Design the dark theme deliberately**, not as an inversion. It is currently
-   a mechanical flip of the light values.
+   A five-step scale (e.g. 0.8125 / 0.9375 / 1.125 / 1.5 / 2rem) covers caption
+   through page title; apply it consistently rather than picking per page.
+4. **Differentiate elevation and radius**, reusing the existing three tokens
+   rather than inventing new ones: `--cairn-radius-sm` for chips, badges, and
+   inline code; `--cairn-radius` for ordinary cards; `--cairn-radius-lg` for
+   emphasis surfaces — empty states, the first-run card, a primary modal.
+5. **Design the dark theme deliberately.** The values above are not a
+   mechanical inversion of the light ones — the accent is a lighter tint
+   because a saturated indigo goes muddy on a dark ground, and surfaces step up
+   in three distinct tones rather than one flat dark fill.
 
 Ship Phase 0 before touching any page. A token change lands everywhere at once;
 doing it after the page work means redoing the page work.
@@ -126,6 +178,14 @@ Tracked separately on the punch list and not design work: credential rotation,
 Google restricted-scope verification, Terms of Service, scheduled backups,
 data-key rotation, team invites, scanned-PDF text recognition, OpenTelemetry,
 and the live-service verifications for Drive and GitHub.
+
+## Autonomy for this session
+
+The owner has explicitly pre-authorized this, for this task only: once
+`pnpm verify` and `pnpm test:e2e` are green, commit and push to `main` without
+pausing to ask first. This does not extend to anything outside the phases
+above — a scope change, a new external account, or spending money still needs
+a check-in as usual.
 
 ## Definition of done
 
