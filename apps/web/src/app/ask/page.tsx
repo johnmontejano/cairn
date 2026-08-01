@@ -15,6 +15,20 @@ export const dynamic = 'force-dynamic';
  * Every sentence is followed by the citations it rests on, and "I do not have
  * enough saved about that" is shown as a normal outcome rather than an error.
  */
+/**
+ * Openers for someone who has not asked anything yet.
+ *
+ * Each is a real task rather than a feature demo, and each is the kind of
+ * question saved memory can actually answer — a decision, a preference, a
+ * commitment. Showing something the product would have to refuse would teach
+ * exactly the wrong lesson on first use.
+ */
+const SUGGESTED_QUESTIONS = [
+  'What did we decide, and why?',
+  'What am I working on right now?',
+  'How do I like things done?',
+];
+
 export default async function AskPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const context = await requireContext();
   const params = await searchParams;
@@ -54,6 +68,33 @@ export default async function AskPage({ searchParams }: { searchParams: Promise<
           </div>
         </form>
       </Card>
+
+      {/* An empty box asks someone to invent a use case on the spot, which is a
+          harder task than it looks and is where people give up. Examples turn
+          that into recognition — and because each one is a link that fills the
+          box, trying one costs a click rather than typing.
+
+          Only shown before the first question: once an answer is on screen the
+          person has their own question in mind, and suggestions would compete
+          with it. */}
+      {result === null ? (
+        <section style={{ marginTop: '1.5rem' }} aria-labelledby="try-asking">
+          <h2 id="try-asking" className="cairn-section-title">
+            Try asking
+          </h2>
+          <div className="cairn-stack cairn-stack--sm">
+            {SUGGESTED_QUESTIONS.map((suggestion) => (
+              <Link
+                key={suggestion}
+                href={`/ask?q=${encodeURIComponent(suggestion)}`}
+                className="cairn-suggestion"
+              >
+                {suggestion}
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {result ? (
         <section style={{ marginTop: '2rem' }} aria-labelledby="answer-heading" aria-live="polite">
