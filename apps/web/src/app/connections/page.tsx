@@ -16,6 +16,47 @@ export const dynamic = 'force-dynamic';
  * is. The plain explanation comes first; the protocol details live inside a
  * disclosure for whoever needs to paste a configuration file.
  */
+/**
+ * Where the connection code goes, per tool.
+ *
+ * One "connect" instruction cannot be right for all of these. Some read a JSON
+ * config file, some take a shell command, some need a setting toggled first.
+ * Someone told simply to "connect" and handed a config snippet has been misled,
+ * even harmlessly — and the moment they are unsure whether they did it right is
+ * the moment they stop.
+ *
+ * `supported` is not decoration. A tool listed without saying it does not work
+ * yet costs someone a wasted attempt and the belief that they broke it; naming
+ * it plainly costs nothing and is true.
+ */
+const MCP_CLIENTS: ReadonlyArray<{ name: string; how: string; supported: boolean }> = [
+  {
+    name: 'Claude Desktop',
+    how: 'Add Cairn to your MCP servers in Settings, then paste the connection code when it asks.',
+    supported: true,
+  },
+  {
+    name: 'Claude Code',
+    how: 'Run the claude mcp add command in your terminal, then paste the connection code.',
+    supported: true,
+  },
+  {
+    name: 'Cursor',
+    how: 'Add Cairn under MCP in Cursor settings, with the connection code as the token.',
+    supported: true,
+  },
+  {
+    name: 'VS Code',
+    how: 'Add Cairn through the MCP extension, using the connection code to sign in.',
+    supported: true,
+  },
+  {
+    name: 'ChatGPT',
+    how: 'Needs remote sign-in, which is built but has never been run against a live issuer. Connection codes are the tested path until it has been.',
+    supported: false,
+  },
+];
+
 export default async function ConnectionsPage() {
   const context = await requireContext();
   const csrf = await csrfToken();
@@ -42,6 +83,33 @@ export default async function ConnectionsPage() {
           </li>
         </ul>
       </Callout>
+
+      <section style={{ marginTop: '2rem' }} aria-labelledby="which-tool">
+        <h2 id="which-tool" className="cairn-section-title">
+          How to connect each tool
+        </h2>
+        <p style={{ color: 'var(--cairn-ink-muted)', marginTop: 0 }}>
+          Every tool below uses the same connection code, made in the next section. What differs is
+          where you put it.
+        </p>
+        <div className="cairn-grid">
+          {MCP_CLIENTS.map((client) => (
+            <Card key={client.name}>
+              <div className="cairn-card__header">
+                <div>
+                  <h3 className="cairn-card__title">{client.name}</h3>
+                  <p className="cairn-card__description">{client.how}</p>
+                </div>
+                {client.supported ? (
+                  <Badge tone="good">Works today</Badge>
+                ) : (
+                  <Badge tone="warn">Not yet</Badge>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
+      </section>
 
       <section style={{ marginTop: '2rem' }} aria-labelledby="new-connection">
         <h2 id="new-connection" className="cairn-section-title">
