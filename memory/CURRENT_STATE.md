@@ -2,6 +2,53 @@
 
 Last updated: 2026-08-01
 
+## Landing elevated to full scroll experience (2026-08-01, night, second pass)
+
+The owner green-lit the original-design route ("best website ever, act as a
+top awwwards designer") after the Unabyss-clone line held a fourth time. What
+shipped is an elevation of Cairn's own committed-dark world, not a new
+identity, built under the Impeccable skill with its finish-review and
+documenter passes:
+
+- **Full-viewport hero**: eyebrow → single h1 → lede → sign-in card → note,
+  stones adrift to the right with the proof card at their foot, and a quiet
+  scroll cue. A `(min-width: 62rem) and (max-height: 60rem)` block keeps the
+  Continue button *and* the cue above the fold on a 900px laptop — note the
+  cascade trap: that block must sit **after** the base hero rules in
+  `globals.css`, same specificity, order decides.
+- **Spectral** (500/600 + italics) is the landing-only display face, loaded
+  via next/font in `page.tsx` (self-hosted at build; CSP untouched), exposed
+  as `--cairn-font-display-face` and consumed through `--landing-display`
+  with the system-serif fallback.
+- **One motion grammar** (`landing-motion.tsx`): hero rise on arrival, the
+  same rise per `[data-reveal]` on scroll, header glass past 24px
+  (`end: 'max'` — without it the glass dropped at page bottom). Uses
+  `opacity`, never `autoAlpha`: visibility:hidden made below-fold sections
+  invisible to Playwright's `toBeVisible` and full-page captures.
+- **Scene** (`stone-scene.ts`): indigo rim light, 90 drifting dust motes,
+  pointer parallax on fine pointers only; the fourth stone moved from
+  `--cairn-info` to `--cairn-ink-subtle` so indigo stays the only glow. On
+  narrow viewports the assembly timeline is keyed to the canvas's own
+  arrival (`top 90%`) instead of page top — phones now see the assembly
+  rather than meeting a finished stack.
+- **Sections**: three-step card grid replaced by a numbered trail on a
+  hairline rail, in an editorial split (sticky intro left, trail right);
+  pillars went quiet-typographic on hairlines; receipts demo enlarged with
+  cite-hover lighting its evidence; page ends on a serif close ("Small
+  stones, deliberately placed.") with a repeated CTA. Synthetic Mill Street
+  demo content now carries quiet "Example" tags.
+- `.cairn-steps` styles were kept — the connections page still uses them.
+- Stale warm-palette `themeColor` values in `layout.tsx` fixed to
+  `#f4f6f8`/`#10141a` in passing.
+- **DESIGN.md now exists at the repo root** (plus `.impeccable/design.json`),
+  recorded from the built world by the Impeccable documenter.
+
+Verified: `pnpm verify` all green; `pnpm test:e2e` 59 passed / 1
+pre-existing skip, twice (before and after review fixes); scene progress
+scrubbed 0→1 in real Chrome on desktop (40% viewport) and mobile (keyed to
+canvas arrival); no horizontal overflow at 390/768/1440; fold checked at
+1440×900 by computed rects, not eyeballing.
+
 ## Landing page committed to dark (2026-08-01, late night)
 
 Third repetition of the "make it very alike Unabyss" ask, this time with

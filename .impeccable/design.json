@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-01T00:00:00Z",
+  "title": "Design System: Cairn",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Indigo",
+        "canonical": "#3454d1",
+        "darkValue": "#7c97f0",
+        "tonalRamp": ["#101b45", "#1a2a6e", "#24399e", "#2a44ad", "#3454d1", "#7c97f0", "#aabbf7", "#e7ecfb"]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Cool Paper",
+        "canonical": "#f4f6f8",
+        "darkValue": "#10141a",
+        "tonalRamp": ["#0c0f13", "#10141a", "#171c22", "#1d232b", "#b9c3cc", "#d7dee4", "#e9edf0", "#f4f6f8"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#14181c",
+        "darkValue": "#e7ecf2",
+        "tonalRamp": ["#14181c", "#262d36", "#333c47", "#4b5560", "#5f6a75", "#7c8892", "#a9b4bf", "#e7ecf2"]
+      },
+      "good": { "role": "status", "displayName": "Good (green)", "canonical": "#1f6b45", "darkValue": "#6cc79a", "tonalRamp": ["#122b1d", "#1c3229", "#1f6b45", "#2e845a", "#4aa878", "#6cc79a", "#a9dfc3", "#e3f1ea"] },
+      "warn": { "role": "status", "displayName": "Warn (ochre)", "canonical": "#7a5410", "darkValue": "#dcb35f", "tonalRamp": ["#2a2110", "#332914", "#7a5410", "#96691c", "#ba8a35", "#dcb35f", "#ecd3a0", "#f8eed6"] },
+      "danger": { "role": "status", "displayName": "Danger (red)", "canonical": "#a02222", "darkValue": "#f08c8c", "tonalRamp": ["#2e1414", "#3a1f1f", "#7c1a1a", "#a02222", "#c94f4f", "#f08c8c", "#f6bcbc", "#fae7e7"] },
+      "info": { "role": "status", "displayName": "Info (slate blue)", "canonical": "#245b7d", "darkValue": "#85bcdd", "tonalRamp": ["#141f26", "#1c2c36", "#245b7d", "#2f7096", "#5497ba", "#85bcdd", "#b6d7ea", "#e2eef5"] },
+      "border": { "role": "neutral", "displayName": "Hairline", "canonical": "#d7dee4", "darkValue": "#262d36", "tonalRamp": ["#262d36", "#333c47", "#5f6a75", "#7c8892", "#a9b4bf", "#b9c3cc", "#d7dee4", "#e9edf0"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Landing Display (Spectral)", "purpose": "Landing h1, section titles, and the big serif close only. Scoped to .cairn-landing via --cairn-font-display-face; system serif everywhere else. Italic + indigo em is the emphasis idiom." },
+      "headline": { "displayName": "Page Title", "purpose": "App page titles, system serif at 650." },
+      "title": { "displayName": "Section Title", "purpose": "App section titles; card titles use the same serif at 1.125rem." },
+      "body": { "displayName": "Body", "purpose": "System sans, 1rem/1.6; ledes at 1.125rem muted, max 60ch." },
+      "label": { "displayName": "Label", "purpose": "Badges, hints, metadata, eyebrows at weight 550." }
+    },
+    "shadows": [
+      { "name": "shadow-sm (Whisper)", "value": "0 1px 2px rgb(20 24 28 / 0.06)", "purpose": "Resting cards, active nav pill, eyebrows. Dark theme: 0 1px 2px rgb(0 0 0 / 0.4)." },
+      { "name": "shadow (Lift)", "value": "0 2px 8px rgb(20 24 28 / 0.08)", "purpose": "Mid panels like the proof demo. Dark: 0 2px 10px rgb(0 0 0 / 0.45)." },
+      { "name": "shadow-lg (Float)", "value": "0 8px 28px rgb(20 24 28 / 0.12)", "purpose": "Hero sign-in card, floating proof card. Dark: 0 8px 30px rgb(0 0 0 / 0.55)." },
+      { "name": "header-glass", "value": "backdrop-filter: blur(14px); background: color-mix(in oklab, var(--cairn-paper) 82%, transparent)", "purpose": "Landing header once scrolled; legibility over the canvas, not decoration." }
+    ],
+    "motion": [
+      { "name": "state-ease", "value": "120ms ease (background-color, border-color, color)", "purpose": "Every hover/state change in the app; colour only, no movement." },
+      { "name": "hero-rise", "value": "opacity 0→1, y 30→0, blur(6px)→0, 0.9s power3.out, stagger 0.09s", "purpose": "Landing first-viewport arrival on [data-hero-rise]. opacity, never autoAlpha." },
+      { "name": "reveal-rise", "value": "opacity 0→1, y 26→0, blur(5px)→0, 0.8s power3.out, ScrollTrigger top 88%", "purpose": "Every [data-reveal] entrance below the fold — the page's one grammar." },
+      { "name": "header-glass-toggle", "value": "240ms ease, toggled at 24px scroll", "purpose": "Landing header transparent-to-glass." },
+      { "name": "scene-scrub", "value": "GSAP timeline, scrub 0.6, power2.inOut, ~0.35–0.45 viewport of travel", "purpose": "Five-stone assembly keyed to page top (wide) or canvas arrival (narrow); moves with the person, both directions." },
+      { "name": "cairn-pulse", "value": "opacity 1→0.4→1, 1.6s ease-in-out infinite", "purpose": "Running-work dots (progress steps, shell status pill)." },
+      { "name": "reduced-motion", "value": "global kill in tokens.css: all durations 0.01ms", "purpose": "Reduced-motion, no-JS, and failed chunk loads all read the finished page." }
+    ],
+    "breakpoints": [
+      { "name": "phone", "value": "40rem" },
+      { "name": "mid", "value": "58rem" },
+      { "name": "wide", "value": "62rem" },
+      { "name": "short-desktop", "value": "(min-width: 62rem) and (max-height: 60rem)" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one filled control; indigo, colour-only hover.",
+      "html": "<button class=\"ds-btn-primary\">Continue</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 44px; min-width: 44px; padding: 0.625rem 1.125rem; border-radius: var(--cairn-radius, 10px); border: 1px solid var(--cairn-accent, #3454d1); background: var(--cairn-accent, #3454d1); color: #ffffff; font: inherit; font-weight: 550; line-height: 1.25; cursor: pointer; transition: background-color 120ms ease, border-color 120ms ease; } .ds-btn-primary:hover { background: var(--cairn-accent-hover, #2a44ad); border-color: var(--cairn-accent-hover, #2a44ad); } .ds-btn-primary:focus-visible { outline: 3px solid var(--cairn-focus, #2a44ad); outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Surface fill with a strong hairline; sinks on hover.",
+      "html": "<button class=\"ds-btn-secondary\">Export everything</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0.625rem 1.125rem; border-radius: var(--cairn-radius, 10px); border: 1px solid var(--cairn-border-strong, #b9c3cc); background: var(--cairn-surface, #ffffff); color: var(--cairn-ink, #14181c); font: inherit; font-weight: 550; line-height: 1.25; cursor: pointer; transition: background-color 120ms ease; } .ds-btn-secondary:hover { background: var(--cairn-surface-sunken, #e9edf0); } .ds-btn-secondary:focus-visible { outline: 3px solid var(--cairn-focus, #2a44ad); outline-offset: 2px; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive actions are outlined, never filled.",
+      "html": "<button class=\"ds-btn-danger\">Delete everything</button>",
+      "css": ".ds-btn-danger { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0.625rem 1.125rem; border-radius: var(--cairn-radius, 10px); border: 1px solid var(--cairn-danger, #a02222); background: transparent; color: var(--cairn-danger, #a02222); font: inherit; font-weight: 550; cursor: pointer; transition: background-color 120ms ease; } .ds-btn-danger:hover { background: var(--cairn-danger-soft, #fae7e7); } .ds-btn-danger:focus-visible { outline: 3px solid var(--cairn-focus, #2a44ad); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Label at 550, hairline input, 3px focus ring, aria-invalid doubles the danger border.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-field-label\" for=\"ds-email\">Email</label><input class=\"ds-input\" id=\"ds-email\" type=\"email\" placeholder=\"you@example.com\" /><p class=\"ds-field-hint\">We send a short code instead of a password.</p></div>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 0.375rem; font-family: var(--cairn-font-sans, system-ui, sans-serif); } .ds-field-label { font-weight: 550; color: var(--cairn-ink, #14181c); } .ds-input { width: 100%; min-height: 44px; padding: 0.625rem 0.75rem; font: inherit; color: var(--cairn-ink, #14181c); background: var(--cairn-surface, #ffffff); border: 1px solid var(--cairn-border-strong, #b9c3cc); border-radius: var(--cairn-radius, 10px); } .ds-input::placeholder { color: var(--cairn-ink-subtle, #5f6a75); } .ds-input:focus-visible { outline: 3px solid var(--cairn-focus, #2a44ad); outline-offset: 2px; } .ds-input[aria-invalid='true'] { border: 2px solid var(--cairn-danger, #a02222); } .ds-field-hint { margin: 0; font-size: 0.9375rem; color: var(--cairn-ink-muted, #4b5560); }"
+    },
+    {
+      "name": "Nav Track",
+      "kind": "nav",
+      "refersTo": "nav-link",
+      "description": "Links as pills inside one sunken pill track; hover is colour-only, current page gets a surface pill.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-link\" href=\"#\" aria-current=\"page\">Home</a><a class=\"ds-nav-link\" href=\"#\">Memory</a><a class=\"ds-nav-link\" href=\"#\">Ask</a><a class=\"ds-nav-link\" href=\"#\">Connected AIs</a></nav>",
+      "css": ".ds-nav { display: inline-flex; gap: 0.125rem; padding: 0.25rem; border-radius: 999px; background: var(--cairn-surface-sunken, #e9edf0); font-family: var(--cairn-font-sans, system-ui, sans-serif); } .ds-nav-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0.5rem 0.875rem; border-radius: 999px; color: var(--cairn-ink-muted, #4b5560); text-decoration: none; font-weight: 550; transition: background-color 120ms ease, color 120ms ease; } .ds-nav-link:hover { background: var(--cairn-surface, #ffffff); color: var(--cairn-ink, #14181c); } .ds-nav-link[aria-current='page'] { background: var(--cairn-surface, #ffffff); color: var(--cairn-accent-ink, #24399e); box-shadow: 0 1px 2px rgb(20 24 28 / 0.06); } .ds-nav-link:focus-visible { outline: 3px solid var(--cairn-focus, #2a44ad); outline-offset: 2px; }"
+    },
+    {
+      "name": "Badge",
+      "kind": "chip",
+      "refersTo": "badge-neutral",
+      "description": "Soft-tinted ground with the deep hue as text; status hues appear only here and in callouts.",
+      "html": "<span class=\"ds-badge ds-badge--good\">Connected</span> <span class=\"ds-badge ds-badge--neutral\">Claude Code</span> <span class=\"ds-badge ds-badge--warn\">Needs review</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.1875rem 0.5rem; border-radius: var(--cairn-radius-sm, 6px); font-family: var(--cairn-font-sans, system-ui, sans-serif); font-size: 0.8125rem; font-weight: 550; line-height: 1.4; white-space: nowrap; } .ds-badge--neutral { background: var(--cairn-surface-sunken, #e9edf0); color: var(--cairn-ink-muted, #4b5560); } .ds-badge--good { background: var(--cairn-good-soft, #e3f1ea); color: var(--cairn-good, #1f6b45); } .ds-badge--warn { background: var(--cairn-warn-soft, #f8eed6); color: var(--cairn-warn, #7a5410); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Surface on paper, hairline border, whisper shadow, serif title.",
+      "html": "<article class=\"ds-card\"><h3 class=\"ds-card-title\">Prefers hairline borders</h3><p class=\"ds-card-desc\">Saved from Planning notes · 12 May</p></article>",
+      "css": ".ds-card { background: var(--cairn-surface, #ffffff); border: 1px solid var(--cairn-border, #d7dee4); border-radius: var(--cairn-radius, 10px); padding: 1.25rem 1.375rem; box-shadow: 0 1px 2px rgb(20 24 28 / 0.06); font-family: var(--cairn-font-sans, system-ui, sans-serif); } .ds-card-title { font-family: var(--cairn-font-serif, ui-serif, Georgia, serif); font-size: 1.125rem; font-weight: 600; margin: 0 0 0.25rem; color: var(--cairn-ink, #14181c); } .ds-card-desc { margin: 0; color: var(--cairn-ink-muted, #4b5560); font-size: 0.9375rem; }"
+    },
+    {
+      "name": "Trail Step",
+      "kind": "custom",
+      "description": "Landing signature: a numbered stone on a hairline rail — a sequence, not a card grid.",
+      "html": "<div class=\"ds-trail-step\"><span class=\"ds-trail-marker\">1</span><div><h3 class=\"ds-trail-title\">Add whatever you keep repeating</h3><p class=\"ds-trail-body\">Paste a note, drop in a document, or point at a page. Nothing needs to be tidy first.</p></div></div>",
+      "css": ".ds-trail-step { position: relative; display: grid; grid-template-columns: 3rem minmax(0, 1fr); gap: 1.25rem; align-items: start; font-family: var(--cairn-font-sans, system-ui, sans-serif); } .ds-trail-step::before { content: ''; position: absolute; left: 1.5rem; top: 3.375rem; bottom: -1.75rem; width: 1px; background: linear-gradient(var(--cairn-border-strong, #b9c3cc), var(--cairn-border, #d7dee4) 75%, transparent); } .ds-trail-marker { display: grid; place-items: center; width: 3rem; height: 3rem; border-radius: 999px; background: var(--cairn-accent-soft, #e7ecfb); border: 1px solid color-mix(in oklab, var(--cairn-accent, #3454d1) 40%, transparent); color: var(--cairn-accent, #3454d1); font-family: var(--cairn-font-serif, ui-serif, Georgia, serif); font-weight: 600; font-size: 1.125rem; } .ds-trail-title { margin: 0.5rem 0 0.375rem; font-size: 1.125rem; font-weight: 650; color: var(--cairn-ink, #14181c); } .ds-trail-body { margin: 0; color: var(--cairn-ink-muted, #4b5560); font-size: 0.9375rem; max-width: 52ch; }"
+    },
+    {
+      "name": "Callout",
+      "kind": "custom",
+      "description": "Tinted ground with a full 1px hue border — no thick accent bar; the tint already carries the tone.",
+      "html": "<div class=\"ds-callout\"><p class=\"ds-callout-title\">Sign-in did not finish</p><p class=\"ds-callout-body\">The code expired. Request a new one and try again.</p></div>",
+      "css": ".ds-callout { padding: 0.875rem 1rem; border-radius: var(--cairn-radius, 10px); border: 1px solid var(--cairn-warn, #7a5410); background: var(--cairn-warn-soft, #f8eed6); color: var(--cairn-ink, #14181c); font-family: var(--cairn-font-sans, system-ui, sans-serif); } .ds-callout-title { margin: 0 0 0.25rem; font-weight: 600; } .ds-callout-body { margin: 0; font-size: 0.9375rem; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Small Stones, Deliberately Placed",
+    "overview": "Cairn is a private shared-memory tool: it asks people to read and judge their own words, so the interface recedes. The ground is cool — blue-grey papers and surfaces, never warm cream — with exactly one deliberate voice, an indigo-blue accent. This is an explicit refusal of the warm cream-and-clay pairing that reads as machine-generated default in this category. The system lives in two registers. The app past sign-in stays quiet: it follows the person's own theme, uses the system font stacks, and moves almost not at all. The landing page is the one place with visual ambition: it commits to the dark ground regardless of system preference, loads Spectral as its display serif, and tells the product's story with one scroll-driven scene — five scattered stones assembling into a cairn. Nothing the landing does leaks into the app. Everything is built defensively: content is complete without JavaScript, motion is gated behind prefers-reduced-motion, heavy libraries are dynamically imported, and every enhancement has a static fallback already on screen before it loads.",
+    "keyCharacteristics": [
+      "Cool blue-grey ground, single indigo accent, four status hues used only for status",
+      "Every foreground/background pair meets WCAG 2.2 AA in both themes — checked, not assumed",
+      "Serif headings over system-sans body; Spectral display face on the landing only",
+      "Hairline 1px borders carry structure; shadows are small and ambient",
+      "44px minimum target on every control; focus is always visible, only restyled",
+      "One motion grammar: rise-from-dark, scroll-scrubbed assembly, reduced-motion safe"
+    ],
+    "rules": [
+      { "name": "The AA Ledger Rule", "body": "Every foreground/background pair meets WCAG 2.2 AA in both themes, and the contrast ratios are recorded as comments next to the tokens. Do not introduce a colour without checking it in both themes.", "section": "colors" },
+      { "name": "The One Voice Rule", "body": "Indigo is the only accent. If something needs emphasis and it isn't a status, it gets indigo or it gets typography — never a second hue.", "section": "colors" },
+      { "name": "The Mirror Rule", "body": "The landing's committed-dark block on .cairn-landing mirrors the dark block in packages/ui/src/tokens.css exactly. Change tokens.css first, then the mirror; never invent a colour in the landing scope.", "section": "colors" },
+      { "name": "The Two-Register Rule", "body": "Spectral exists only inside .cairn-landing (scoped via --cairn-font-display-face, self-hosted by next/font). The app past sign-in never inherits the display face; its serif is always the system stack.", "section": "typography" },
+      { "name": "The Measure Rule", "body": "Body copy is always width-limited: 60ch ledes, 52ch trail bodies, 46ch empty-state copy. No full-width paragraphs.", "section": "typography" },
+      { "name": "The Hairline-First Rule", "body": "If a border can do the job, no shadow. Callouts use a full 1px border in the status hue rather than a thick accent bar — the tinted background already carries the tone; don't say it twice.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do check every new foreground/background pair against WCAG 2.2 AA in both themes before it lands, and record the ratio beside the token (the AA Ledger Rule).",
+      "Do give every interactive control 44px minimum in both dimensions (--cairn-target) and the global 3px focus ring.",
+      "Do keep the fallback ladder: static SVG rendered on the server, canvas/motion swapped in-place in the same grid cell only after prefers-reduced-motion and capability checks pass, no visible error state on failure.",
+      "Do name CSS classes after product concepts (cairn-proof__evidence, cairn-trail__marker) — plain CSS read more often than written, not utility soup.",
+      "Do use the rise-from-dark grammar (opacity + y + blur, power3.out) for any new landing entrance; it is the page's only entrance.",
+      "Do scope any new landing-only ambition (faces, committed colours, washes) under .cairn-landing."
+    ],
+    "donts": [
+      "Don't introduce a second accent hue, or use status colours decoratively.",
+      "Don't let the app past sign-in commit to a theme, load Spectral, or grow scroll choreography — it follows the person's preference and stays quiet.",
+      "Don't move elements on hover in the app nav or button rows; hover is colour-only there. (Landing CTAs may lift 1px — that is the landing's licence, not the app's.)",
+      "Don't hide content until JavaScript arrives, or use autoAlpha/visibility: hidden for pending animations.",
+      "Don't invent colours inside the .cairn-landing dark scope — it is a verbatim mirror of the tokens.css dark block (the Mirror Rule).",
+      "Don't put a thick accent bar on callouts or double-state a tone; the tinted ground plus a 1px hue border already says it."
+    ]
+  }
+}

@@ -16,6 +16,14 @@ html {
   color-scheme: light dark;
 }
 
+/* In-page anchors on the landing glide instead of jumping; reduced motion
+   keeps the jump via the global kill in tokens.css and this guard. */
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.cairn-landing) {
+    scroll-behavior: smooth;
+  }
+}
+
 body {
   margin: 0;
   background: var(--cairn-paper);
@@ -409,17 +417,69 @@ pre.cairn-code {
   overflow-x: auto;
 }
 
+/* Numbered how-to steps, used by app pages (e.g. Connected AIs). The landing
+   used to share these; it now has its own trail below. */
+.cairn-steps {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
+  counter-reset: cairn-step;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cairn-step {
+  counter-increment: cairn-step;
+  background: var(--cairn-surface);
+  border: 1px solid var(--cairn-border);
+  border-radius: var(--cairn-radius-lg);
+  padding: 1.5rem 1.375rem 1.375rem;
+  box-shadow: var(--cairn-shadow-sm);
+}
+.cairn-step::before {
+  content: counter(cairn-step);
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: var(--cairn-accent-soft);
+  color: var(--cairn-accent-ink);
+  font-weight: 700;
+  font-size: var(--cairn-text-sm);
+  margin-bottom: 0.875rem;
+}
+@media (prefers-color-scheme: dark) {
+  .cairn-step::before {
+    color: var(--cairn-accent);
+  }
+}
+.cairn-step__title {
+  margin: 0 0 0.375rem;
+  font-size: var(--cairn-text-md);
+  font-weight: 650;
+}
+.cairn-step__body {
+  margin: 0;
+  color: var(--cairn-ink-muted);
+  font-size: var(--cairn-text-sm);
+}
+
 /* ------------------------------------------------------------------ *
  * The landing page
  *
  * The only place in the product with any visual ambition. Everything past
  * sign-in stays quiet, because there the person is reading their own words and
- * the interface should get out of the way. Here it has to earn the sign-up, so
- * it carries the display serif, the warm wash, and the one illustration.
+ * the interface should get out of the way. Here it has to earn the sign-up:
+ * a committed night ground, a display serif with carved terminals, and one
+ * scroll-driven scene — the five stones finding their place.
  * ------------------------------------------------------------------ */
 
 .cairn-landing {
   --landing-gutter: clamp(1.25rem, 4vw, 3rem);
+  /* Spectral when the landing loaded it; the system serif otherwise. Scoped
+     here so the app past sign-in never inherits the display face. */
+  --landing-display: var(--cairn-font-display-face, var(--cairn-font-serif));
   position: relative;
   isolation: isolate;
   overflow-x: clip;
@@ -481,26 +541,30 @@ pre.cairn-code {
 }
 .cairn-landing .cairn-display em,
 .cairn-landing .cairn-art__proof-label,
-.cairn-landing .cairn-step::before,
 .cairn-landing .cairn-proof__cite {
   color: var(--cairn-accent);
 }
 
-/* A soft warmth behind the fold. Pure CSS, so it costs nothing to load. */
+/* Anchored sections stop clear of the sticky header. */
+.cairn-landing [id] {
+  scroll-margin-top: 5.5rem;
+}
+
+/* Night light: one soft indigo wash behind the fold. Pure CSS. */
 .cairn-landing::before {
   content: '';
   position: absolute;
   inset: -12rem 0 auto;
-  height: 46rem;
+  height: 52rem;
   z-index: -1;
   background:
     radial-gradient(
-      60% 55% at 22% 28%,
-      color-mix(in oklab, var(--cairn-accent) 16%, transparent),
+      60% 55% at 24% 30%,
+      color-mix(in oklab, var(--cairn-accent) 17%, transparent),
       transparent 70%
     ),
     radial-gradient(
-      48% 45% at 82% 12%,
+      48% 45% at 82% 10%,
       color-mix(in oklab, var(--cairn-info) 12%, transparent),
       transparent 70%
     );
@@ -513,18 +577,103 @@ pre.cairn-code {
   padding-inline: var(--landing-gutter);
 }
 
+/* ------------------------- landing header ------------------------------- */
+
+/* Transparent over the night hero; gets its glass back the moment the page
+   moves (the blur is for legibility over the canvas, not decoration). */
+.cairn-header--landing {
+  background: transparent;
+  border-bottom-color: transparent;
+  transition:
+    background-color 240ms ease,
+    border-color 240ms ease;
+}
+.cairn-header--landing.is-scrolled {
+  background: color-mix(in oklab, var(--cairn-paper) 82%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-bottom-color: var(--cairn-border);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cairn-header--landing {
+    transition: none;
+  }
+}
+
+.cairn-landing-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.cairn-landing-nav__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--cairn-target);
+  padding: 0.5rem 0.875rem;
+  border-radius: 999px;
+  font-size: var(--cairn-text-sm);
+  font-weight: 550;
+  text-decoration: none;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+.cairn-landing .cairn-landing-nav__link {
+  color: var(--cairn-ink-muted);
+}
+.cairn-landing .cairn-landing-nav__link:hover {
+  color: var(--cairn-ink);
+  background: color-mix(in oklab, var(--cairn-surface-raised) 72%, transparent);
+}
+.cairn-landing-nav__cta {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--cairn-target);
+  padding: 0.5rem 1.125rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--cairn-accent) 55%, transparent);
+  font-size: var(--cairn-text-sm);
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+.cairn-landing .cairn-landing-nav__cta {
+  color: var(--cairn-accent);
+}
+.cairn-landing .cairn-landing-nav__cta:hover {
+  background: var(--cairn-accent-soft);
+  border-color: var(--cairn-accent);
+  color: var(--cairn-accent-hover);
+}
+@media (max-width: 40rem) {
+  .cairn-landing-nav__link {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cairn-landing-nav__link,
+  .cairn-landing-nav__cta {
+    transition: none;
+  }
+}
+
 /* --------------------------------- hero --------------------------------- */
 
 .cairn-hero {
   display: grid;
-  gap: clamp(2rem, 5vw, 4rem);
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: clamp(2rem, 5vw, 4.5rem);
+  grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
   align-items: center;
-  padding-block: clamp(2.5rem, 7vw, 5.5rem) clamp(2rem, 5vw, 4rem);
+  min-height: calc(100dvh - 12rem);
+  padding-block: clamp(2.5rem, 6vw, 5rem) clamp(1.5rem, 3vw, 2.5rem);
 }
 @media (max-width: 62rem) {
   .cairn-hero {
     grid-template-columns: 1fr;
+    min-height: auto;
+    gap: 2.5rem;
   }
 }
 
@@ -550,12 +699,12 @@ pre.cairn-code {
 }
 
 .cairn-display {
-  font-family: var(--cairn-font-serif);
-  font-size: clamp(2.25rem, 1.4rem + 3.4vw, 3.75rem);
-  line-height: 1.06;
+  font-family: var(--landing-display);
+  font-size: clamp(2.5rem, 1.35rem + 4.2vw, 4.25rem);
+  line-height: 1.04;
   letter-spacing: -0.022em;
   font-weight: 600;
-  margin: 1.25rem 0 0;
+  margin: 1.375rem 0 0;
   text-wrap: balance;
 }
 .cairn-display em {
@@ -569,7 +718,7 @@ pre.cairn-code {
 }
 
 .cairn-hero__lede {
-  margin: 1.125rem 0 0;
+  margin: 1.25rem 0 0;
   font-size: clamp(1.0625rem, 1rem + 0.3vw, 1.1875rem);
   line-height: 1.6;
   color: var(--cairn-ink-muted);
@@ -578,7 +727,7 @@ pre.cairn-code {
 
 .cairn-hero__card {
   margin-top: 2rem;
-  background: var(--cairn-surface);
+  background: color-mix(in oklab, var(--cairn-surface) 88%, transparent);
   border: 1px solid var(--cairn-border);
   border-radius: var(--cairn-radius-lg);
   padding: 1.5rem;
@@ -596,6 +745,74 @@ pre.cairn-code {
   font-size: var(--cairn-text-xs);
   color: var(--cairn-ink-subtle);
   max-width: 30rem;
+}
+
+/* The quiet invitation under the hero. Hidden on small screens, where the
+   next section is already in reach. */
+.cairn-scroll-cue {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  padding-block: 0.5rem clamp(1.5rem, 4vw, 3rem);
+  color: var(--cairn-ink-subtle);
+  font-size: var(--cairn-text-xs);
+  letter-spacing: 0.02em;
+}
+.cairn-scroll-cue__line {
+  width: 1px;
+  height: 2.75rem;
+  background: linear-gradient(var(--cairn-accent), transparent);
+  transform-origin: top;
+  animation: cairn-cue-drop 2.6s ease-in-out infinite;
+}
+@keyframes cairn-cue-drop {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+    opacity: 0.35;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+@media (max-width: 62rem) {
+  .cairn-scroll-cue {
+    display: none;
+  }
+}
+
+/* On a short desktop (a 900px laptop lid) the first fold must still end with
+   the Continue button and the scroll cue on screen: tighten the vertical
+   rhythm rather than letting the primary action slip under the fold. Sits
+   after the base hero rules on purpose — same specificity, so order decides. */
+@media (min-width: 62rem) and (max-height: 60rem) {
+  .cairn-hero {
+    min-height: 0;
+    padding-block: 1.5rem 0.25rem;
+  }
+  .cairn-display {
+    font-size: clamp(2.25rem, 1.1rem + 3.6vw, 3.55rem);
+    margin-top: 1rem;
+  }
+  .cairn-hero__card {
+    margin-top: 1.125rem;
+    padding: 1.125rem 1.5rem;
+  }
+  .cairn-hero__lede {
+    margin-top: 0.875rem;
+  }
+  .cairn-hero__note {
+    margin-top: 0.75rem;
+  }
+  .cairn-scroll-cue {
+    padding-block: 0 1.75rem;
+  }
+  .cairn-scroll-cue__line {
+    height: 2.25rem;
+  }
 }
 
 /* --------------------------- hero illustration --------------------------- */
@@ -624,6 +841,17 @@ pre.cairn-code {
   aspect-ratio: 16 / 15;
   opacity: 0;
   transition: opacity 200ms ease;
+}
+/* On the landing hero the scene is the protagonist, so it gets more stage. */
+.cairn-landing .cairn-art__stones,
+.cairn-landing .cairn-art__canvas {
+  width: min(100%, 26rem);
+}
+@media (max-width: 62rem) {
+  .cairn-landing .cairn-art__stones,
+  .cairn-landing .cairn-art__canvas {
+    width: min(80vw, 21rem);
+  }
 }
 .cairn-art__canvas--active {
   opacity: 1;
@@ -691,68 +919,124 @@ pre.cairn-code {
 /* -------------------------------- sections ------------------------------- */
 
 .cairn-landing-section {
-  padding-block: clamp(2.5rem, 6vw, 4.5rem);
+  padding-block: clamp(3.5rem, 8vw, 6.5rem);
   border-top: 1px solid var(--cairn-border);
 }
 .cairn-landing-section__title {
-  font-family: var(--cairn-font-serif);
-  font-size: clamp(1.5rem, 1.2rem + 1.1vw, 2rem);
-  line-height: 1.2;
+  font-family: var(--landing-display);
+  font-size: clamp(1.75rem, 1.25rem + 1.8vw, 2.5rem);
+  line-height: 1.15;
   letter-spacing: -0.015em;
   font-weight: 600;
-  margin: 0 0 0.625rem;
+  margin: 0 0 0.75rem;
+  text-wrap: balance;
 }
 .cairn-landing-section__lede {
-  margin: 0 0 2rem;
+  margin: 0 0 2.25rem;
   color: var(--cairn-ink-muted);
   max-width: 46rem;
   font-size: var(--cairn-text-md);
 }
 
-.cairn-steps {
-  display: grid;
-  gap: 1.25rem;
-  grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
-  counter-reset: cairn-step;
+/* An editorial split: the section's claim holds the left column while its
+   substance walks down the right, so a wide viewport is a spread, not a
+   column with half a page of dark to its right. */
+@media (min-width: 62rem) {
+  .cairn-landing-section--split {
+    display: grid;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    gap: clamp(2.5rem, 6vw, 5rem);
+    align-items: start;
+  }
+  .cairn-landing-section--split .cairn-landing-section__intro {
+    position: sticky;
+    top: 6.5rem;
+  }
+  .cairn-landing-section--split .cairn-landing-section__lede {
+    margin-bottom: 0;
+  }
+}
+
+/* The quiet honesty tag on demonstration content: this is what it looks
+   like, not somebody's real record. */
+.cairn-example-tag {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--cairn-border);
+  border-radius: 999px;
+  color: var(--cairn-ink-subtle);
+  font-size: var(--cairn-text-xs);
+  font-weight: 550;
+}
+
+/* ------------------------------- the trail -------------------------------- *
+ * The three steps as a walked path rather than a card grid: each stop is a
+ * numbered stone on a hairline rail. The numbers are the point — this is a
+ * sequence, and the rail says "then". */
+
+.cairn-trail {
   list-style: none;
   margin: 0;
   padding: 0;
+  display: grid;
+  gap: clamp(1.75rem, 4vw, 2.75rem);
+  max-width: 46rem;
 }
-.cairn-step {
-  counter-increment: cairn-step;
-  background: var(--cairn-surface);
-  border: 1px solid var(--cairn-border);
-  border-radius: var(--cairn-radius-lg);
-  padding: 1.5rem 1.375rem 1.375rem;
-  box-shadow: var(--cairn-shadow-sm);
+.cairn-trail__step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
 }
-.cairn-step::before {
-  content: counter(cairn-step);
+/* The rail that joins one stop to the next. */
+.cairn-trail__step::before {
+  content: '';
+  position: absolute;
+  left: 1.5rem;
+  top: 3.375rem;
+  bottom: calc(-1 * clamp(1.75rem, 4vw, 2.75rem));
+  width: 1px;
+  background: linear-gradient(var(--cairn-border-strong), var(--cairn-border) 75%, transparent);
+}
+.cairn-trail__step:last-child::before {
+  display: none;
+}
+.cairn-trail__marker {
   display: grid;
   place-items: center;
-  width: 2rem;
-  height: 2rem;
+  width: 3rem;
+  height: 3rem;
   border-radius: 999px;
   background: var(--cairn-accent-soft);
-  color: var(--cairn-accent-ink);
-  font-weight: 700;
-  font-size: var(--cairn-text-sm);
-  margin-bottom: 0.875rem;
+  border: 1px solid color-mix(in oklab, var(--cairn-accent) 40%, transparent);
+  color: var(--cairn-accent);
+  font-family: var(--landing-display);
+  font-weight: 600;
+  font-size: var(--cairn-text-md);
 }
-@media (prefers-color-scheme: dark) {
-  .cairn-step::before {
-    color: var(--cairn-accent);
-  }
-}
-.cairn-step__title {
-  margin: 0 0 0.375rem;
+.cairn-trail__title {
+  font-family: var(--cairn-font-sans);
+  margin: 0.5rem 0 0.375rem;
   font-size: var(--cairn-text-md);
   font-weight: 650;
+  letter-spacing: 0;
 }
-.cairn-step__body {
+.cairn-trail__body {
   margin: 0;
   color: var(--cairn-ink-muted);
   font-size: var(--cairn-text-sm);
+  max-width: 52ch;
+}
+/* Two stops side by side (the connect-a-tool pair); no rail between columns. */
+.cairn-trail--pair {
+  max-width: none;
+  grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr));
+  gap: 2rem;
+}
+.cairn-trail--pair .cairn-trail__step::before {
+  display: none;
 }
 
 /* ------------------------------ proof panel ------------------------------ */
@@ -772,11 +1056,15 @@ pre.cairn-code {
   background: var(--cairn-surface);
   border: 1px solid var(--cairn-border);
   border-radius: var(--cairn-radius-lg);
-  padding: 1.375rem;
+  padding: clamp(1.375rem, 3vw, 2rem);
   box-shadow: var(--cairn-shadow);
 }
 .cairn-proof__question {
-  font-weight: 650;
+  font-family: var(--landing-display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: var(--cairn-text-lg);
+  line-height: 1.3;
   margin: 0 0 0.875rem;
 }
 .cairn-proof__answer {
@@ -789,6 +1077,7 @@ pre.cairn-code {
   vertical-align: super;
   color: var(--cairn-accent-ink);
   font-weight: 700;
+  cursor: help;
 }
 @media (prefers-color-scheme: dark) {
   .cairn-proof__cite {
@@ -797,9 +1086,24 @@ pre.cairn-code {
 }
 .cairn-proof__evidence {
   background: var(--cairn-surface-sunken);
+  border: 1px solid transparent;
   border-radius: var(--cairn-radius);
   padding: 0.875rem 1rem;
   font-size: var(--cairn-text-xs);
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease;
+}
+/* Hovering a citation lights up the receipt it points to — the argument,
+   enacted. */
+.cairn-proof__demo:has(.cairn-proof__cite:hover) .cairn-proof__evidence {
+  background: var(--cairn-accent-soft);
+  border-color: color-mix(in oklab, var(--cairn-accent) 45%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cairn-proof__evidence {
+    transition: none;
+  }
 }
 .cairn-proof__evidence p {
   margin: 0.375rem 0 0;
@@ -807,25 +1111,109 @@ pre.cairn-code {
   font-style: italic;
 }
 
-/* -------------------------------- pillars -------------------------------- */
+/* -------------------------------- pillars -------------------------------- *
+ * The promises go quiet and typographic: three columns on hairlines, no
+ * cards. What is being promised should not arrive in packaging. */
 
 .cairn-pillars {
   display: grid;
-  gap: 1.25rem;
-  grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(1.5rem, 3vw, 2.5rem);
   list-style: none;
   margin: 0;
   padding: 0;
 }
+.cairn-pillars > li {
+  border-left: 1px solid var(--cairn-border);
+  padding-left: clamp(1rem, 2vw, 1.5rem);
+}
+@media (max-width: 58rem) {
+  .cairn-pillars {
+    grid-template-columns: 1fr;
+    gap: 1.75rem;
+  }
+}
 .cairn-pillar__title {
-  margin: 0 0 0.375rem;
+  font-family: var(--cairn-font-sans);
+  margin: 0 0 0.5rem;
   font-weight: 650;
-  font-size: 1rem;
+  font-size: var(--cairn-text-md);
+  letter-spacing: 0;
 }
 .cairn-pillar__body {
   margin: 0;
   color: var(--cairn-ink-muted);
   font-size: var(--cairn-text-sm);
+}
+
+/* --------------------------------- close ---------------------------------- *
+ * The page ends on purpose: the product's idea said once more, large, and the
+ * one action repeated for whoever read this far. */
+
+.cairn-close {
+  position: relative;
+  border-top: 1px solid var(--cairn-border);
+  padding-block: clamp(4.5rem, 11vw, 8.5rem);
+  text-align: center;
+}
+.cairn-close::before {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 26rem;
+  z-index: -1;
+  background: radial-gradient(
+    55% 70% at 50% 100%,
+    color-mix(in oklab, var(--cairn-accent) 12%, transparent),
+    transparent 72%
+  );
+  pointer-events: none;
+}
+.cairn-close__line {
+  font-family: var(--landing-display);
+  font-size: clamp(2rem, 1.1rem + 3.6vw, 3.5rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+  margin: 0;
+  text-wrap: balance;
+}
+.cairn-close__line em {
+  font-style: italic;
+  color: var(--cairn-accent);
+}
+.cairn-close__sub {
+  margin: 1.25rem auto 2.25rem;
+  color: var(--cairn-ink-muted);
+  font-size: var(--cairn-text-md);
+  max-width: 34rem;
+}
+.cairn-close__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--cairn-target);
+  padding: 0.75rem 1.875rem;
+  border-radius: 999px;
+  background: var(--cairn-accent);
+  font-weight: 650;
+  text-decoration: none;
+  transition:
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+.cairn-landing .cairn-close__cta {
+  color: var(--cairn-paper);
+}
+.cairn-landing .cairn-close__cta:hover {
+  background: var(--cairn-accent-hover);
+  color: var(--cairn-paper);
+  transform: translateY(-1px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cairn-close__cta {
+    transition: none;
+  }
 }
 
 .cairn-landing-footer {

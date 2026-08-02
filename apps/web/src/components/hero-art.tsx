@@ -28,8 +28,8 @@ export function StonesSvg() {
           <stop offset="100%" stopColor="var(--cairn-ink-subtle)" stopOpacity="0.65" />
         </linearGradient>
         <linearGradient id="cairn-stone-c" x1="0" y1="0" x2="0.3" y2="1">
-          <stop offset="0%" stopColor="var(--cairn-info)" stopOpacity="0.75" />
-          <stop offset="100%" stopColor="var(--cairn-info)" stopOpacity="0.45" />
+          <stop offset="0%" stopColor="var(--cairn-ink-subtle)" stopOpacity="0.8" />
+          <stop offset="100%" stopColor="var(--cairn-ink-subtle)" stopOpacity="0.5" />
         </linearGradient>
       </defs>
 
@@ -72,6 +72,7 @@ export function StonesSvg() {
 export function ProofCard() {
   return (
     <figure className="cairn-art__proof">
+      <span className="cairn-example-tag">Example</span>
       <span className="cairn-art__proof-label">Why do you know this?</span>
       <blockquote className="cairn-art__proof-quote">
         “We decided to sign the Mill Street lease rather than the unit by the station.”

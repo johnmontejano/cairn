@@ -62,7 +62,7 @@ const STONES: readonly StoneSpec[] = [
     adrift: { position: [2.3, 2.6, 0.4], rotation: [0.3, -0.35, 0.6] },
   },
   {
-    colorVar: '--cairn-info',
+    colorVar: '--cairn-ink-subtle',
     scale: [1.12, 0.4, 0.76],
     home: { position: [0.05, 2.55, -0.02], rotation: [0, -0.1, 0.03] },
     adrift: { position: [-1.5, 4.2, -0.5], rotation: [0.6, 0.1, 0.5] },
@@ -116,6 +116,11 @@ export function mountStoneScene(container: HTMLElement): () => void {
   const key = new THREE.DirectionalLight(0xffffff, 1.35);
   key.position.set(4, 7, 6);
   scene.add(key);
+  // A faint indigo rim from below-left, so the night ground reads as lit air
+  // rather than a void.
+  const rim = new THREE.PointLight(tokenColor(container, '--cairn-accent'), 6, 14, 1.8);
+  rim.position.set(-3.5, 0.4, 2.5);
+  scene.add(rim);
 
   const group = new THREE.Group();
   scene.add(group);
@@ -137,6 +142,29 @@ export function mountStoneScene(container: HTMLElement): () => void {
     return mesh;
   });
 
+  // Dust in the light: a handful of slow motes drifting upward through the
+  // scene, so the night air has depth. Cheap — one Points object, no per-frame
+  // allocation — and disposed with everything else.
+  const moteCount = 90;
+  const motePositions = new Float32Array(moteCount * 3);
+  for (let i = 0; i < moteCount; i += 1) {
+    motePositions[i * 3] = (Math.random() - 0.5) * 8;
+    motePositions[i * 3 + 1] = Math.random() * 6 - 1;
+    motePositions[i * 3 + 2] = (Math.random() - 0.5) * 5;
+  }
+  const moteGeometry = new THREE.BufferGeometry();
+  moteGeometry.setAttribute('position', new THREE.BufferAttribute(motePositions, 3));
+  const moteMaterial = new THREE.PointsMaterial({
+    color: tokenColor(container, '--cairn-accent'),
+    size: 0.035,
+    transparent: true,
+    opacity: 0.55,
+    depthWrite: false,
+    sizeAttenuation: true,
+  });
+  const motes = new THREE.Points(moteGeometry, moteMaterial);
+  scene.add(motes);
+
   // A soft blob rather than a real shadow map: the grounding matters, the
   // gigawatts do not.
   const shadowMaterial = new THREE.MeshBasicMaterial({
@@ -156,19 +184,27 @@ export function mountStoneScene(container: HTMLElement): () => void {
   const recolor = () => {
     STONES.forEach((spec, i) => materials[i]!.color.copy(tokenColor(container, spec.colorVar)));
     shadowMaterial.color.copy(tokenColor(container, '--cairn-ink'));
+    rim.color.copy(tokenColor(container, '--cairn-accent'));
+    moteMaterial.color.copy(tokenColor(container, '--cairn-accent'));
   };
   darkQuery.addEventListener('change', recolor);
 
-  // Scroll choreography: progress 0 at the very top of the page, fully
-  // assembled after about a third of a viewport — early enough that the
-  // finished stack is still on screen when it locks in, because an ending
-  // nobody can see is not an ending. Scrubbed, so it plays forwards and
-  // backwards with the person, not on its own schedule.
+  // Scroll choreography, keyed to where the scene actually is on screen.
+  // On a wide viewport the canvas shares the first fold, so progress 0 sits
+  // at the very top of the page and assembly completes after about a third
+  // of a viewport — early enough that the finished stack is still visible
+  // when it locks in, because an ending nobody can see is not an ending.
+  // On a narrow viewport the hero stacks copy-first and the stones live a
+  // viewport down, so the same window is keyed to the canvas's own arrival
+  // instead — otherwise a phone would only ever meet the finished stack and
+  // the page's one story would never play. Scrubbed either way, so it moves
+  // forwards and backwards with the person, not on its own schedule.
+  const narrow = window.matchMedia('(max-width: 62rem)').matches;
   const timeline = gsap.timeline({
     scrollTrigger: {
-      trigger: document.body,
-      start: 'top top',
-      end: () => `+=${Math.round(window.innerHeight * 0.35)}`,
+      trigger: narrow ? container : document.body,
+      start: narrow ? 'top 90%' : 'top top',
+      end: () => `+=${Math.round(window.innerHeight * (narrow ? 0.45 : 0.35))}`,
       scrub: 0.6,
       // Ground truth for tests and debugging: screenshots of a live canvas
       // are unreliable, an attribute is not.
@@ -195,6 +231,17 @@ export function mountStoneScene(container: HTMLElement): () => void {
   timeline.to(camera.position, { y: 2.0, z: 9.2, duration: 1.2, ease: 'power1.inOut' }, 0);
   timeline.to(group.rotation, { y: 0.14, duration: 1.2, ease: 'power1.inOut' }, 0);
 
+  // Pointer parallax: the camera leans a small, eased amount toward the
+  // pointer, so the scene reads as an object in space rather than a video.
+  // Only wired up for fine pointers — on touch it would fight the scroll.
+  const parallax = { x: 0, y: 0, targetX: 0, targetY: 0 };
+  const finePointer = window.matchMedia('(pointer: fine)').matches;
+  const onPointerMove = (event: PointerEvent) => {
+    parallax.targetX = (event.clientX / window.innerWidth - 0.5) * 2;
+    parallax.targetY = (event.clientY / window.innerHeight - 0.5) * 2;
+  };
+  if (finePointer) window.addEventListener('pointermove', onPointerMove, { passive: true });
+
   // Render only while it can be seen. The idle drift is deliberately tiny —
   // alive, not busy.
   let running = false;
@@ -202,7 +249,20 @@ export function mountStoneScene(container: HTMLElement): () => void {
   const tick = (now: number) => {
     if (!running) return;
     group.position.y = Math.sin(now * 0.0009) * 0.05;
+    // Ease toward the pointer at a tenth of the distance per frame — slow
+    // enough to feel like weight, not tracking.
+    parallax.x += (parallax.targetX - parallax.x) * 0.06;
+    parallax.y += (parallax.targetY - parallax.y) * 0.06;
+    camera.position.x = parallax.x * 0.55;
     camera.lookAt(lookTarget);
+    // The motes rise slowly and wrap; the buffer is mutated in place.
+    const positions = moteGeometry.attributes.position!;
+    for (let i = 0; i < moteCount; i += 1) {
+      let y = positions.getY(i) + 0.0035;
+      if (y > 5.2) y = -1;
+      positions.setY(i, y);
+    }
+    positions.needsUpdate = true;
     renderer.render(scene, camera);
     frame = requestAnimationFrame(tick);
   };
@@ -236,7 +296,10 @@ export function mountStoneScene(container: HTMLElement): () => void {
     intersection.disconnect();
     resize.disconnect();
     document.removeEventListener('visibilitychange', onVisibility);
+    if (finePointer) window.removeEventListener('pointermove', onPointerMove);
     darkQuery.removeEventListener('change', recolor);
+    moteGeometry.dispose();
+    moteMaterial.dispose();
     timeline.scrollTrigger?.kill();
     timeline.kill();
     geometry.dispose();
