@@ -2,6 +2,46 @@
 
 Last updated: 2026-08-01
 
+## Scroll-driven 3D hero shipped (2026-08-01, night)
+
+The owner asked for a scroll-activated 3D landing animation "like
+unabyss.com's" built with Three.js/GSAP. Per the standing originality line,
+what shipped is Cairn's own scene, not a replica of theirs: the five stones —
+already the product mark — drift apart at the top of the page and assemble
+into the cairn as you scroll. The metaphor is the product story (scattered
+context, deliberately assembled), told by the brand's own object.
+
+Implementation (`apps/web/src/components/stone-scene.ts` +
+`hero-scene.tsx`; `hero-art.tsx` split into reusable `StonesSvg`/`ProofCard`):
+
+- **Three.js + GSAP ScrollTrigger**, bundled (no CDN — the nonce +
+  `strict-dynamic` CSP stays untouched), loaded via dynamic import so only
+  the landing page ever pays for the chunk, and only after the static
+  drawing is already on screen.
+- **Every fallback keeps the drawing**: `prefers-reduced-motion`, missing
+  WebGL, or a failed chunk load all leave the existing SVG in place — there
+  is no visitor-visible error state. The drawing and canvas share one grid
+  cell so the swap cannot shift layout, and only one carries the image role
+  (`landing.spec.ts`'s pinned aria-label) at a time.
+- **Colours come from the live `--cairn-*` tokens** (light/dark both work; a
+  theme flip mid-session recolours the stones in place).
+- **Craft guards**: pixel ratio clamped at 1.75, render loop paused when the
+  hero is off-screen or the tab hidden, full disposal on unmount (geometry,
+  materials, renderer, observers, ScrollTrigger).
+
+Two art-direction bugs found by actually looking at it in the browser and
+fixed before pushing: the scattered stones started mostly outside the camera
+frustum (read as two blobs, not five stones), and assembly originally
+completed after ~1.05 viewports of scroll — by which point the hero had
+scrolled away, so nobody would ever have seen the stack lock in. It now
+completes at ~0.35 viewports, on screen.
+
+Verified with browser devtools per the owner's ask: WebGL context healthy,
+scrub runs both directions, reduced-motion emulation keeps the SVG (no
+canvas at all), dark mode picks up dark tokens, zero scene errors in the
+console, no horizontal overflow. `pnpm verify` green, `pnpm test:e2e` 59
+passed / 1 pre-existing skip. New deps: `three`, `gsap` (+ `@types/three`).
+
 ## Connect-an-AI UX restructured after owner feedback (2026-08-01, evening)
 
 Owner feedback on the shipped redesign: aesthetics improved, but the

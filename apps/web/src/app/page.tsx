@@ -5,7 +5,7 @@ import { Badge, Callout, SkipLink } from '@cairn/ui';
 import { getServices } from '@cairn/ingestion';
 import { Wordmark } from '@/components/chrome';
 import { SignInFlow } from '@/components/forms';
-import { HeroArt } from '@/components/hero-art';
+import { HeroScene } from '@/components/hero-scene';
 import { continueSignIn, hasSession } from '@/server/actions';
 import { safeReturnPath } from '@/server/auth';
 
@@ -111,7 +111,7 @@ export default async function SignInPage({
               </p>
             </div>
 
-            <HeroArt />
+            <HeroScene />
           </section>
         </div>
 
