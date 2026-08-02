@@ -79,7 +79,8 @@
 }
 @media (prefers-color-scheme: dark) {
   .cairn-button--primary {
-    color: #1a1917;
+    /* Dark ink on the light accent tint — matches the dark --cairn-paper. */
+    color: #10141a;
   }
 }
 

@@ -36,15 +36,21 @@ interface StoneSpec {
  * stone stays inside that so the top of the page reads as five stones
  * hovering, not two blobs and three absences.
  */
+/**
+ * Stone colours are picked from tokens that hold their own on BOTH grounds —
+ * the landing commits to dark, but the same scene must survive a light
+ * theme if it is ever reused. Surface-toned tokens are deliberately absent:
+ * on the committed-dark landing they melt into the background.
+ */
 const STONES: readonly StoneSpec[] = [
   {
-    colorVar: '--cairn-border-strong',
+    colorVar: '--cairn-ink-subtle',
     scale: [2.05, 0.6, 1.4],
     home: { position: [0, 0, 0], rotation: [0, 0.1, 0] },
     adrift: { position: [-0.5, 3.4, -0.9], rotation: [0.45, 0.6, 0.35] },
   },
   {
-    colorVar: '--cairn-surface-raised',
+    colorVar: '--cairn-border-strong',
     scale: [1.65, 0.52, 1.12],
     home: { position: [0.06, 0.95, 0.02], rotation: [0, -0.14, 0.02] },
     adrift: { position: [-2.2, 1.1, 0.6], rotation: [-0.4, 0.2, -0.55] },
@@ -62,15 +68,21 @@ const STONES: readonly StoneSpec[] = [
     adrift: { position: [-1.5, 4.2, -0.5], rotation: [0.6, 0.1, 0.5] },
   },
   {
-    colorVar: '--cairn-surface-raised',
+    colorVar: '--cairn-ink-muted',
     scale: [0.85, 0.34, 0.58],
     home: { position: [-0.02, 3.2, 0.03], rotation: [0, 0.3, 0.09] },
     adrift: { position: [1.7, 0.4, 1.0], rotation: [-0.5, 0.45, -0.35] },
   },
 ];
 
-function tokenColor(name: string): THREE.Color {
-  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+/**
+ * Reads the token from the canvas's own container, not the document root —
+ * the landing page scopes its committed-dark overrides to `.cairn-landing`,
+ * so the root would answer with the light values while the scene sits on a
+ * near-black ground.
+ */
+function tokenColor(from: Element, name: string): THREE.Color {
+  const raw = getComputedStyle(from).getPropertyValue(name).trim();
   const color = new THREE.Color();
   color.setStyle(raw || '#888888');
   return color;
@@ -112,7 +124,7 @@ export function mountStoneScene(container: HTMLElement): () => void {
   const materials: THREE.MeshStandardMaterial[] = [];
   const meshes = STONES.map((spec) => {
     const material = new THREE.MeshStandardMaterial({
-      color: tokenColor(spec.colorVar),
+      color: tokenColor(container, spec.colorVar),
       roughness: 0.9,
       metalness: 0.02,
     });
@@ -128,7 +140,7 @@ export function mountStoneScene(container: HTMLElement): () => void {
   // A soft blob rather than a real shadow map: the grounding matters, the
   // gigawatts do not.
   const shadowMaterial = new THREE.MeshBasicMaterial({
-    color: tokenColor('--cairn-ink'),
+    color: tokenColor(container, '--cairn-ink'),
     transparent: true,
     opacity: 0.02,
   });
@@ -142,8 +154,8 @@ export function mountStoneScene(container: HTMLElement): () => void {
   // wearing the previous theme's palette.
   const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
   const recolor = () => {
-    STONES.forEach((spec, i) => materials[i]!.color.copy(tokenColor(spec.colorVar)));
-    shadowMaterial.color.copy(tokenColor('--cairn-ink'));
+    STONES.forEach((spec, i) => materials[i]!.color.copy(tokenColor(container, spec.colorVar)));
+    shadowMaterial.color.copy(tokenColor(container, '--cairn-ink'));
   };
   darkQuery.addEventListener('change', recolor);
 
@@ -158,6 +170,11 @@ export function mountStoneScene(container: HTMLElement): () => void {
       start: 'top top',
       end: () => `+=${Math.round(window.innerHeight * 0.35)}`,
       scrub: 0.6,
+      // Ground truth for tests and debugging: screenshots of a live canvas
+      // are unreliable, an attribute is not.
+      onUpdate: (self) => {
+        container.dataset.sceneProgress = self.progress.toFixed(3);
+      },
     },
   });
   meshes.forEach((mesh, i) => {

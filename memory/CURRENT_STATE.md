@@ -2,6 +2,47 @@
 
 Last updated: 2026-08-01
 
+## Landing page committed to dark (2026-08-01, late night)
+
+Third repetition of the "make it very alike Unabyss" ask, this time with
+their full-page screenshots pasted into chat. Line held again — but the
+legitimate core extracted this round was the **dark cinematic mood**, which
+is nobody's property. The landing page now commits to dark regardless of
+system preference, using Cairn's own already-AA-checked dark tokens: the
+indigo accent glows on near-black, the serif display sits in off-white, and
+the 3D stones read as lit objects. The app past sign-in still follows the
+person's own theme; only the marketing surface commits.
+
+Implementation notes worth keeping:
+
+- The commitment is a scoped token override block on `.cairn-landing` in
+  `globals.css` (values mirror `tokens.css`'s dark block exactly — change
+  there first, then here), plus `color-scheme: dark` and a handful of
+  element rules that normally flip via the dark media query.
+- **`stone-scene.ts`'s `tokenColor` now reads from the canvas's container,
+  not `document.documentElement`** — with landing-scoped overrides, the root
+  answers with light values while the scene sits on a near-black ground.
+  Anything else reading tokens for a scoped-dark region has the same trap.
+- Stone colours moved off surface-toned tokens (which melt into the
+  committed-dark background) onto tokens that hold their own on both
+  grounds: ink-subtle, border-strong, accent, info, ink-muted.
+- Fixed in passing: `styles.css`'s dark-mode primary-button text colour was
+  the old warm palette's `#1a1917`, stale since the Phase 0 palette swap;
+  now `#10141a`.
+- The scene's ScrollTrigger writes `data-scene-progress` onto its container
+  (ground truth for tests/debugging — screenshots of a live canvas proved
+  unreliable).
+
+**Verification caveat learned the hard way:** the Claude-in-app browser pane
+neither delivers scroll events to ScrollTrigger nor composites screenshots
+reliably mid-scroll (frozen scenes, stale light-band composites). The same
+build probed in a real Chrome via Playwright tracked scroll perfectly
+(`progress 1.000` at 40% scroll, `0.000` back at top). Judge scroll-driven
+work in a real browser, not the pane.
+
+`pnpm verify` green; `pnpm test:e2e` 59 passed / 1 pre-existing skip, landing
+tests running against the committed-dark page.
+
 ## Scroll-driven 3D hero shipped (2026-08-01, night)
 
 The owner asked for a scroll-activated 3D landing animation "like

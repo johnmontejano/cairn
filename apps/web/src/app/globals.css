@@ -423,6 +423,67 @@ pre.cairn-code {
   position: relative;
   isolation: isolate;
   overflow-x: clip;
+
+  /*
+   * The landing commits to the dark look regardless of system preference —
+   * the one page in the product with visual ambition, and night suits it:
+   * the indigo accent glows instead of sitting flat, and the animated
+   * stones read as lit objects rather than clip-art. The app past sign-in
+   * still follows the person's own theme; only the marketing surface
+   * commits.
+   *
+   * Values mirror the dark block in packages/ui/src/tokens.css exactly —
+   * change them there first, then here. Every pair was contrast-checked
+   * there; nothing below is a new colour.
+   */
+  color-scheme: dark;
+  --cairn-paper: #10141a;
+  --cairn-surface: #171c22;
+  --cairn-surface-sunken: #0c0f13;
+  --cairn-surface-raised: #1d232b;
+  --cairn-ink: #e7ecf2;
+  --cairn-ink-muted: #a9b4bf;
+  --cairn-ink-subtle: #7c8892;
+  --cairn-accent: #7c97f0;
+  --cairn-accent-hover: #94aeff;
+  --cairn-accent-soft: #202a47;
+  --cairn-accent-ink: #aabbf7;
+  --cairn-good: #6cc79a;
+  --cairn-good-soft: #1c3229;
+  --cairn-warn: #dcb35f;
+  --cairn-warn-soft: #332914;
+  --cairn-danger: #f08c8c;
+  --cairn-danger-soft: #3a1f1f;
+  --cairn-info: #85bcdd;
+  --cairn-info-soft: #1c2c36;
+  --cairn-border: #262d36;
+  --cairn-border-strong: #333c47;
+  --cairn-focus: #94aeff;
+  --cairn-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --cairn-shadow: 0 2px 10px rgb(0 0 0 / 0.45);
+  --cairn-shadow-lg: 0 8px 30px rgb(0 0 0 / 0.55);
+
+  background: var(--cairn-paper);
+  color: var(--cairn-ink);
+}
+
+/* Element-level rules that normally flip via the dark media query need the
+   same treatment under the landing's committed dark, independent of the
+   system theme. */
+.cairn-landing .cairn-button--primary {
+  color: var(--cairn-paper);
+}
+.cairn-landing .cairn-art__stones {
+  filter: drop-shadow(0 18px 34px rgb(0 0 0 / 0.5));
+}
+.cairn-landing a {
+  color: var(--cairn-accent);
+}
+.cairn-landing .cairn-display em,
+.cairn-landing .cairn-art__proof-label,
+.cairn-landing .cairn-step::before,
+.cairn-landing .cairn-proof__cite {
+  color: var(--cairn-accent);
 }
 
 /* A soft warmth behind the fold. Pure CSS, so it costs nothing to load. */
