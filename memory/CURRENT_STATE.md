@@ -2,6 +2,52 @@
 
 Last updated: 2026-08-01
 
+## Connect-an-AI UX restructured after owner feedback (2026-08-01, evening)
+
+Owner feedback on the shipped redesign: aesthetics improved, but the
+connect-an-AI experience was still confusing — "how things connect, how you
+should do the setup." Root cause was information architecture, not visuals:
+the per-client cards described actions whose actual objects (the address, the
+code form) lived two or three sections lower, so every card was a scavenger
+hunt.
+
+`apps/web/src/app/connections/page.tsx` rebuilt around the structure the
+whole category uses:
+
+- **Per-client cards now carry the exact thing to copy, on the card.** In
+  sign-in mode: Claude / ChatGPT / Cursor cards each have a "Copy address"
+  button; Claude Code's card carries a copyable, complete
+  `claude mcp add --transport http …` command. Reuses the existing
+  `CopyableCode` component; no new machinery.
+- **A two-step "How connecting works" guide** (reusing the landing page's
+  `cairn-steps` pattern), worded per mode.
+- **"Your connections" is now a table** — name, allowed-to, connected date,
+  last used, status, turn-off — instead of stacked cards, and sits above the
+  fallback plumbing instead of below it.
+- **The connection-code form is explicitly the fallback**, unchanged in
+  behaviour and labels (e2e-pinned), retitled sections around it.
+- Landing page gained a "Bring the AI you already use" section: tool-name
+  chips (only tools the connections page genuinely lists) and a two-step
+  strip, built from existing landing primitives, no new CSS.
+
+One deliberate test change, not a weakening: `journey.spec.ts`'s issued-code
+assertion matched `code.cairn-code` by DOM position (`.first()`), which was
+only ever true by accident; it now matches the code by its own `cairn_`
+prefix, since the connect cards above legitimately render copyable
+addresses/commands.
+
+**The accompanying ask was declined, again:** the owner asked, with pasted
+screenshots of their logged-in Unabyss dashboard, for the landing page and app
+to look "exactly like" Unabyss. Same answer as 2026-07-27 and every
+recurrence since (see "The one thing declined, repeatedly, on purpose"
+below): functional/structural conventions adopted freely, their palette,
+copy, layout, and imagery not reproduced. The restructure above is exactly
+that line in practice.
+
+Verified: `pnpm verify` green, `pnpm test:e2e` 59 passed / 1 pre-existing
+skip. Full create-code → code-shown-once → table-row flow exercised live in a
+real browser before pushing.
+
 ## Redesign brief (`docs/REDESIGN_BRIEF.md`) fully implemented, verified, and pushed (2026-08-01)
 
 All four phases landed on `main` in one dedicated session, per the

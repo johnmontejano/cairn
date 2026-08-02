@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PRODUCT } from '@cairn/config';
-import { Callout, SkipLink } from '@cairn/ui';
+import { Badge, Callout, SkipLink } from '@cairn/ui';
 import { getServices } from '@cairn/ingestion';
 import { Wordmark } from '@/components/chrome';
 import { SignInFlow } from '@/components/forms';
@@ -185,6 +185,39 @@ export default async function SignInPage({
                 </li>
               ))}
             </ul>
+          </section>
+
+          <section className="cairn-landing-section" aria-labelledby="tools">
+            <h2 id="tools" className="cairn-landing-section__title">
+              Bring the AI you already use
+            </h2>
+            <p className="cairn-landing-section__lede">
+              Cairn is not another chat window to live in. The tools you already work in can look
+              things up here — with your say-so, and never more than you chose to keep.
+            </p>
+            <div className="cairn-row" style={{ marginBottom: '1.5rem' }}>
+              {['Claude', 'Claude Code', 'ChatGPT', 'Cursor', 'VS Code'].map((name) => (
+                <Badge key={name} tone="neutral">
+                  {name}
+                </Badge>
+              ))}
+            </div>
+            <ol className="cairn-steps">
+              <li className="cairn-step">
+                <h3 className="cairn-step__title">Save a few things first</h3>
+                <p className="cairn-step__body">
+                  Add the background you keep repeating and keep what is right. A connected tool can
+                  only ever see what you chose to keep.
+                </p>
+              </li>
+              <li className="cairn-step">
+                <h3 className="cairn-step__title">Connect your tool once</h3>
+                <p className="cairn-step__body">
+                  Approve it here, and from then on it can look things up on its own. Turning it off
+                  takes effect immediately.
+                </p>
+              </li>
+            </ol>
           </section>
 
           <footer className="cairn-landing-footer">

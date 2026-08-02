@@ -187,7 +187,15 @@ test.describe('connecting an AI tool', () => {
     await page.getByRole('button', { name: 'Create a connection code' }).click();
 
     await expect(page.getByText(/Copy this code now/)).toBeVisible();
-    await expect(page.locator('code.cairn-code').first()).toContainText(/^cairn_/);
+    // Scoped to the issued code rather than DOM order: the per-client connect
+    // cards above legitimately render copyable addresses and commands, so
+    // "first code element on the page" is no longer the secret.
+    await expect(
+      page
+        .locator('code.cairn-code')
+        .filter({ hasText: /^cairn_/ })
+        .first(),
+    ).toBeVisible();
   });
 });
 

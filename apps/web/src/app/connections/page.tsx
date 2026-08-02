@@ -1,7 +1,7 @@
 import { Badge, Callout, Card, Disclosure, EmptyState, LinkButton } from '@cairn/ui';
 import { MCP_PROTOCOL_REVISION, PRODUCT } from '@cairn/config';
 import { AppShell } from '@/components/chrome';
-import { ActionForm, SubmitButton } from '@/components/forms';
+import { ActionForm, CopyableCode, SubmitButton } from '@/components/forms';
 import { createConnectedAi, revokeConnectedAi } from '@/server/actions';
 import { csrfToken, requireContext } from '@/server/context';
 import { loadConnections } from '@/server/views';
@@ -17,13 +17,14 @@ export const dynamic = 'force-dynamic';
  * disclosure for whoever needs to paste a configuration file.
  */
 /**
- * Where the connection code goes, per tool.
+ * One card per tool, each carrying the exact thing to copy.
  *
  * One "connect" instruction cannot be right for all of these. Some read a JSON
  * config file, some take a shell command, some need a setting toggled first.
- * Someone told simply to "connect" and handed a config snippet has been misled,
- * even harmlessly — and the moment they are unsure whether they did it right is
- * the moment they stop.
+ * And the card is only honest if the thing it tells you to paste is *on the
+ * card* — a card describing an address kept three sections lower is a
+ * scavenger hunt, and the moment someone is unsure whether they did it right
+ * is the moment they stop.
  *
  * `supported` is not decoration. A tool listed without saying it does not work
  * yet costs someone a wasted attempt and the belief that they broke it; naming
@@ -31,7 +32,13 @@ export const dynamic = 'force-dynamic';
  */
 function mcpClients(
   signInMode: boolean,
-): ReadonlyArray<{ name: string; how: string; supported: boolean }> {
+  mcpUrl: string,
+): ReadonlyArray<{
+  name: string;
+  how: string;
+  supported: boolean;
+  copy?: { value: string; label: string };
+}> {
   if (!signInMode) {
     return [
       {
@@ -64,25 +71,40 @@ function mcpClients(
   return [
     {
       name: 'Claude',
-      how: 'Settings → Connectors → Add custom connector, then paste the address below. Claude opens a Cairn page where you say yes.',
+      how: 'In Claude, open Settings → Connectors → Add custom connector and paste this address. Claude brings you back here, and you say yes once.',
       supported: true,
-    },
-    {
-      name: 'ChatGPT',
-      how: 'Settings → Apps → Create, paste the address below, and choose sign-in when it asks how to connect.',
-      supported: true,
-    },
-    {
-      name: 'Cursor',
-      how: 'Add Cairn under MCP in Cursor settings using the address below. It will send you here to approve it.',
-      supported: true,
+      copy: { value: mcpUrl, label: 'Copy address' },
     },
     {
       name: 'Claude Code',
-      how: 'Run claude mcp add --transport http cairn with the address below. Your browser opens for approval.',
+      how: 'Run this in your terminal. Your browser opens so you can approve it here.',
       supported: true,
+      copy: {
+        value: `claude mcp add --transport http ${PRODUCT.slug} ${mcpUrl}`,
+        label: 'Copy command',
+      },
+    },
+    {
+      name: 'ChatGPT',
+      how: 'In ChatGPT, open Settings → Apps → Create, paste this address, and pick sign-in when it asks how to connect.',
+      supported: true,
+      copy: { value: mcpUrl, label: 'Copy address' },
+    },
+    {
+      name: 'Cursor',
+      how: 'In Cursor settings, add Cairn under MCP with this address. It sends you here to approve.',
+      supported: true,
+      copy: { value: mcpUrl, label: 'Copy address' },
     },
   ];
+}
+
+/** Dates in the connections table, without the milliseconds nobody reads. */
+function shortDate(when: Date): string {
+  return when.toISOString().slice(0, 10);
+}
+function shortDateTime(when: Date): string {
+  return when.toISOString().slice(0, 16).replace('T', ' ');
 }
 
 export default async function ConnectionsPage() {
@@ -93,14 +115,29 @@ export default async function ConnectionsPage() {
   // When sign-in is available, pasting an address is the whole story and the
   // connection-code machinery becomes the fallback for tools that cannot do it.
   const signInMode = view.authMode === 'oauth';
-  const clients = mcpClients(signInMode);
-  // Every client's own instructions point at one of two places on this same
-  // page: the address block (signed-in tools) or the connection-code form
-  // (everything else, and the fallback for a signed-in tool that cannot use
-  // the address). Either way it is a plain anchor into content already on
-  // the page, not a new flow.
-  const connectHref = signInMode ? '#address' : '#client-name';
-  const connectLabel = signInMode ? 'Use the address above' : 'Get a connection code';
+  const clients = mcpClients(signInMode, view.mcpUrl);
+
+  const steps = signInMode
+    ? [
+        {
+          title: 'Copy from your tool’s card',
+          body: 'Each card above carries the exact thing to paste and says where it goes. Nothing else is needed.',
+        },
+        {
+          title: 'Say yes once',
+          body: 'The tool brings you back to a Cairn page that asks whether this is alright. After that it can look things up — and you can turn it off below, any time, immediately.',
+        },
+      ]
+    : [
+        {
+          title: 'Make a connection code',
+          body: 'Use the form below. The code is shown once, so copy it right away.',
+        },
+        {
+          title: 'Paste it where your tool’s card says',
+          body: 'After that the tool can look things up — and you can turn it off below, any time, immediately.',
+        },
+      ];
 
   return (
     <AppShell current="/connections" email={context.email}>
@@ -123,33 +160,14 @@ export default async function ConnectionsPage() {
         </ul>
       </Callout>
 
-      {signInMode ? (
-        <section style={{ marginTop: '2rem' }} aria-labelledby="address">
-          <h2 id="address" className="cairn-section-title">
-            Start here
-          </h2>
-          <Card>
-            <p style={{ marginTop: 0 }}>
-              Copy this address into the AI tool you want to use. It will bring you back here to ask
-              whether that is alright, and you say yes once.
-            </p>
-            <pre className="cairn-code">{view.mcpUrl}</pre>
-            <p className="cairn-meta" style={{ marginBottom: 0 }}>
-              You do not need a code, a file, or a terminal. Everything below is only for tools that
-              cannot use an address.
-            </p>
-          </Card>
-        </section>
-      ) : null}
-
       <section style={{ marginTop: '2rem' }} aria-labelledby="which-tool">
         <h2 id="which-tool" className="cairn-section-title">
-          How to connect each tool
+          {signInMode ? 'Connect an AI tool' : 'How to connect each tool'}
         </h2>
         <p style={{ color: 'var(--cairn-ink-muted)', marginTop: 0 }}>
           {signInMode
-            ? 'Every tool below uses the same address. What differs is where you paste it.'
-            : 'Every tool below uses the same connection code, made in the next section. What differs is where you put it.'}
+            ? 'Pick the tool you use. Its card has the exact thing to copy and says where to paste it.'
+            : 'Every tool below uses the same connection code, made in the section further down. What differs is where you put it.'}
         </p>
         <div className="cairn-grid">
           {clients.map((client) => (
@@ -165,10 +183,14 @@ export default async function ConnectionsPage() {
                   <Badge tone="warn">Not yet</Badge>
                 )}
               </div>
-              {client.supported ? (
+              {client.copy ? (
+                <div style={{ marginTop: '0.875rem' }}>
+                  <CopyableCode value={client.copy.value} label={client.copy.label} />
+                </div>
+              ) : client.supported ? (
                 <div className="cairn-row" style={{ marginTop: '0.875rem' }}>
-                  <LinkButton tone="secondary" href={connectHref}>
-                    {connectLabel}
+                  <LinkButton tone="secondary" href="#client-name">
+                    Get a connection code
                   </LinkButton>
                 </div>
               ) : null}
@@ -176,6 +198,105 @@ export default async function ConnectionsPage() {
           ))}
         </div>
       </section>
+
+      <section style={{ marginTop: '2rem' }} aria-labelledby="how-connecting">
+        <h2 id="how-connecting" className="cairn-section-title">
+          How connecting works
+        </h2>
+        <ol className="cairn-steps">
+          {steps.map((step) => (
+            <li className="cairn-step" key={step.title}>
+              <h3 className="cairn-step__title">{step.title}</h3>
+              <p className="cairn-step__body">{step.body}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section style={{ marginTop: '2rem' }} aria-labelledby="existing">
+        <h2 id="existing" className="cairn-section-title">
+          Your connections ({active.length})
+        </h2>
+        {view.clients.length === 0 ? (
+          <EmptyState title="Nothing connected yet">
+            Your memory is not being shared with anything.
+          </EmptyState>
+        ) : (
+          <div className="cairn-table-wrap">
+            <table className="cairn-table">
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">Allowed to</th>
+                  <th scope="col">Connected</th>
+                  <th scope="col">Last used</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">
+                    <span className="cairn-visually-hidden">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {view.clients.map((client) => (
+                  <tr key={client.id}>
+                    <td>{client.name}</td>
+                    <td>
+                      {client.scopes.includes('memory:propose')
+                        ? 'Look things up and suggest'
+                        : 'Look things up'}
+                      <div className="cairn-meta">
+                        {client.maxSensitivity === 'normal'
+                          ? 'Sensitive memory excluded'
+                          : 'Sensitive memory included'}
+                      </div>
+                    </td>
+                    <td>{shortDate(client.createdAt)}</td>
+                    <td>{client.lastUsedAt ? shortDateTime(client.lastUsedAt) : 'Not yet'}</td>
+                    <td>
+                      {client.revokedAt ? (
+                        <Badge tone="neutral">Turned off</Badge>
+                      ) : (
+                        <Badge tone="good">Active</Badge>
+                      )}
+                    </td>
+                    <td>
+                      {client.revokedAt ? null : (
+                        <ActionForm
+                          action={revokeConnectedAi}
+                          csrf={csrf}
+                          hidden={{ clientId: client.id }}
+                        >
+                          <SubmitButton tone="danger" busyLabel="Turning off…">
+                            Turn off
+                          </SubmitButton>
+                        </ActionForm>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {signInMode ? (
+        <section style={{ marginTop: '2rem' }} aria-labelledby="address">
+          <h2 id="address" className="cairn-section-title">
+            Any other tool
+          </h2>
+          <Card>
+            <p style={{ marginTop: 0 }}>
+              Any tool that accepts a custom connector address can use this one. It will bring you
+              back here to ask whether that is alright, and you say yes once.
+            </p>
+            <CopyableCode value={view.mcpUrl} label="Copy address" />
+            <p className="cairn-meta" style={{ marginBottom: 0, marginTop: '0.75rem' }}>
+              If a tool cannot use an address at all, make a connection code below instead.
+            </p>
+          </Card>
+        </section>
+      ) : null}
 
       <section style={{ marginTop: '2rem' }} aria-labelledby="new-connection">
         <h2 id="new-connection" className="cairn-section-title">
@@ -227,65 +348,9 @@ export default async function ConnectionsPage() {
         </Card>
       </section>
 
-      <section style={{ marginTop: '2rem' }} aria-labelledby="existing">
-        <h2 id="existing" className="cairn-section-title">
-          Your connections ({active.length})
-        </h2>
-        {view.clients.length === 0 ? (
-          <EmptyState title="Nothing connected yet">
-            Your memory is not being shared with anything.
-          </EmptyState>
-        ) : (
-          <div className="cairn-stack cairn-stack--md">
-            {view.clients.map((client) => (
-              <Card key={client.id}>
-                <div className="cairn-card__header">
-                  <div>
-                    <h3 className="cairn-card__title">{client.name}</h3>
-                    <div className="cairn-meta" style={{ marginTop: '0.25rem' }}>
-                      {client.revokedAt ? (
-                        <Badge tone="neutral">Turned off</Badge>
-                      ) : (
-                        <Badge tone="good">Active</Badge>
-                      )}
-                      <span>
-                        {client.scopes.includes('memory:propose')
-                          ? 'Can look things up and suggest'
-                          : 'Can look things up'}
-                      </span>
-                      <span>
-                        {client.maxSensitivity === 'normal'
-                          ? 'Sensitive memory excluded'
-                          : 'Sensitive memory included'}
-                      </span>
-                      <span>
-                        {client.lastUsedAt
-                          ? `Last used ${client.lastUsedAt.toISOString().slice(0, 16).replace('T', ' ')}`
-                          : 'Not used yet'}
-                      </span>
-                    </div>
-                  </div>
-                  {client.revokedAt ? null : (
-                    <ActionForm
-                      action={revokeConnectedAi}
-                      csrf={csrf}
-                      hidden={{ clientId: client.id }}
-                    >
-                      <SubmitButton tone="danger" busyLabel="Turning off…">
-                        Turn off
-                      </SubmitButton>
-                    </ActionForm>
-                  )}
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </section>
-
       <section style={{ marginTop: '2rem' }} aria-labelledby="how-to">
         <h2 id="how-to" className="cairn-section-title">
-          How to finish the connection
+          Where a connection code goes
         </h2>
         <Card>
           <p style={{ marginTop: 0 }}>
