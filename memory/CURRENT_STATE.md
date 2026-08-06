@@ -109,8 +109,6 @@ databases per run.
 
 ## Landing elevated to full scroll experience (2026-08-01, night, second pass)
 
-## Landing elevated to full scroll experience (2026-08-01, night, second pass)
-
 The owner green-lit the original-design route ("best website ever, act as a
 top awwwards designer") after the Unabyss-clone line held a fourth time. What
 shipped is an elevation of Cairn's own committed-dark world, not a new
