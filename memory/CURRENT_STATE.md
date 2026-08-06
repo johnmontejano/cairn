@@ -2,6 +2,43 @@
 
 Last updated: 2026-08-06
 
+## Gmail filtering flipped from deny-list to allow-list (2026-08-06, later)
+
+Shipped as `a3afdb1`. The deny-list filter from earlier the same day (bulk
+categories, `List-Unsubscribe`/`List-Id`/`Precedence`/`Auto-Submitted`,
+noreply senders) worked as designed and still let a parish's own attendance
+reminder through in a live account — it had none of those signals. Manually
+clearing the review queue in the browser (done once for the owner's account,
+`SourceGroupCard`'s "Remove all N") surfaced the owner's actual, narrower
+want: "what I send to people and what I get back from threads... not
+subscription or bill reminder emails." Not "exclude what looks like spam" —
+"only include actual correspondence."
+
+`classifyMail` (`packages/connectors/src/mailFilter.ts`) now defaults to
+exclusion. A non-SENT message must carry `In-Reply-To` or `References` to be
+considered at all; the existing bulk checks still run afterward as a second
+layer, in case something fakes a reply header. `isBulkMail` renamed
+`isExcludedMail` in `gmail.ts` — the old name stopped being true the moment a
+message could fail without being bulk mail by any definition. Both test files
+rewritten: most cases now need a reply header added just to reach the check
+they're actually testing, since without one they're excluded a step earlier
+by the new gate.
+
+**Known, stated cost:** the first message in a new exchange, before anyone
+has answered it, is excluded — indistinguishable from cold mail without a
+reply header. Once a reply exists, both sides become memory. This is
+documented in the code as deliberate, not a gap to close.
+
+**Not yet fixed:** background Gmail sync jobs continued running while the
+manual cleanup was happening — the "Don't Wait Until You Notice a Change"
+group grew from 14 to 29 items across two page loads mid-session — so a
+follow-up sync on an already-connected Gmail account will still ingest
+_new_ candidates under the old rule until that account's next sync run picks
+up this deploy. No backfill/reclassification of already-stored proposals was
+done; existing non-junk proposals in any account are unaffected, but existing
+first-contact (never-replied) proposals stored before this change remain
+until individually reviewed or the source resyncs.
+
 ## Connect-first restructure, and two real bugs behind it (2026-08-06)
 
 Shipped as `641ccd6`, live and verified on the owner's own account. The
