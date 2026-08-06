@@ -23,13 +23,15 @@ import { classifyMail, trimMailBody } from './mailFilter';
  * and `format=full` is requested so the payload includes headers and body
  * parts rather than only the id Gmail's list endpoint gives you.
  *
- * Not every message becomes memory. A mailbox is mostly not correspondence, and
- * mail addressed to a list rather than to a person — newsletters, marketing,
- * automated notifications — is turned away twice: once by the query below,
- * which never asks Gmail for it, and once per message by the header checks in
- * ./mailFilter, which catch the newsletter Gmail filed under Primary because
- * the person replied to it once years ago. Mail the person sent is exempt from
- * both; their own words are the last thing this should discard.
+ * Not every message becomes memory. Only correspondence does — mail the person
+ * wrote, and mail that is itself a reply within an exchange — which is decided
+ * twice: once by the query below, which never asks Gmail for the categories
+ * it already knows are not correspondence, and once per message by the header
+ * checks in ./mailFilter, which catch everything the category exclusions
+ * cannot see — a newsletter Gmail filed under Primary because the person
+ * replied to it once years ago, or a one-off automated reminder that was never
+ * bulk mail at all and so never got a category. Mail the person sent is exempt
+ * from both; their own words are the last thing this should discard.
  *
  * Every message this connector drops is counted and returned as `filtered`, so
  * a sync run records it as seen-and-skipped rather than quietly shrinking. What
@@ -110,7 +112,12 @@ function header(message: Pick<GmailMessage, 'payload'>, name: string): string {
 }
 
 /**
- * Whether a fetched message is bulk mail rather than correspondence.
+ * Whether a fetched message fails the correspondence test — not bulk mail
+ * specifically, but anything that is not itself a reply or something the
+ * person wrote. The name says what the check now decides; `classifyMail`'s
+ * default flipped from "keep unless it looks like spam" to "drop unless it is
+ * part of an exchange," and a message can fail that without carrying a single
+ * bulk-mail header — the parish reminder that started this rule had none.
  *
  * Takes the message rather than only its headers because the one rule that must
  * never be overruled — a person's own sent mail is always kept — is carried on
@@ -122,7 +129,7 @@ function header(message: Pick<GmailMessage, 'payload'>, name: string): string {
  * expects, and exists as its own export so the connector's actual filtering
  * decision can be tested against a real Gmail payload.
  */
-export function isBulkMail(message: Pick<GmailMessage, 'labelIds' | 'payload'>): boolean {
+export function isExcludedMail(message: Pick<GmailMessage, 'labelIds' | 'payload'>): boolean {
   return !classifyMail({
     labelIds: message.labelIds ?? [],
     header: (name) => header(message, name),
@@ -196,11 +203,14 @@ export class GmailConnector implements SourceConnector {
       const message = await this.fetchMessage(entry.id, accessToken);
       if (!message) continue;
 
-      // The category exclusions in the query above cannot see a newsletter that
-      // Gmail filed under Primary, which is where anything a person has ever
-      // replied to ends up. The headers can. Counted, not silently dropped —
+      // The category exclusions in the query above only ever catch mail
+      // Gmail itself has flagged; a genuinely one-off message — a newsletter
+      // filed under Primary because the person replied to it once years ago,
+      // or an automated reminder that was never bulk mail at all — reaches
+      // this point regardless. The header check judges every message on its
+      // own, correspondence or not. Counted, not silently dropped —
       // `filtered` is what the sync run reports as seen-and-skipped.
-      if (isBulkMail(message)) {
+      if (isExcludedMail(message)) {
         filtered += 1;
         continue;
       }

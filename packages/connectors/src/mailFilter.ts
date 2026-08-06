@@ -1,25 +1,34 @@
 /**
  * Deciding which mail is worth remembering, and where a message actually ends.
  *
- * A mailbox is mostly not correspondence. Newsletters, receipts, notifications,
- * and marketing land in the same inbox as the three messages a year in which
- * someone agrees a date or settles a decision, and a memory product that treats
- * those the same produces a review queue nobody will finish and a memory nobody
- * trusts. Worse, marketing prose is written in exactly the register extraction
- * looks for — "we've decided to bring you...", "you should never miss...",
- * "always free shipping" — so bulk mail does not merely add noise, it is
- * actively the most likely thing to be mistaken for a decision or a rule.
+ * A mailbox is mostly not correspondence. Most of what lands there was written
+ * once, to be sent to everyone, and never answered: newsletters, receipts,
+ * marketing, automated reminders, notifications. That is true even of a
+ * message that carries none of the usual bulk-mail signals — a parish's own
+ * attendance reminder, an airline's boarding pass, a subscription renewal —
+ * because none of it is a conversation, whatever tone it happens to be written
+ * in. Worse, this register is exactly the one extraction looks for —
+ * "we've decided to bring you...", "you should never miss...", "this is a
+ * reminder that..." — so it does not merely add noise, it is actively the
+ * most likely thing to be mistaken for a decision or a rule.
  *
- * So bulk mail is excluded here, before it becomes a source item at all, rather
- * than being ingested and filtered later. Nothing is stored, nothing is
- * encrypted and written, and nothing arrives in the review queue to be dismissed
- * one card at a time.
+ * So the default here is exclusion, not inclusion: a message earns a place in
+ * memory by being part of an actual exchange — something the person wrote, or
+ * a reply to something they were part of — never by merely failing to look
+ * like spam. Connecting Gmail means "learn how I write and who I talk to," not
+ * "read everything that ever reached my inbox."
  *
- * Two rules keep this from quietly eating real mail:
+ * This is decided before a message becomes a source item at all, rather than
+ * being ingested and filtered later. Nothing is stored, nothing is encrypted
+ * and written, and nothing arrives in the review queue to be dismissed one
+ * card at a time.
  *
- *   - Mail the person sent is always kept. Whatever headers it carries, they
- *     wrote it, and a product that silently discarded a person's own words
- *     would be wrong in a way no filtering benefit could pay for.
+ * Two rules keep this from being too strict in the other direction:
+ *
+ *   - Mail the person sent is always kept, unconditionally. Whatever headers
+ *     it carries, they wrote it, and a product that silently discarded a
+ *     person's own words would be wrong in a way no filtering benefit could
+ *     pay for.
  *   - Every exclusion is counted and reported. A sync that read 200 messages
  *     and kept 12 says so.
  */
@@ -78,6 +87,26 @@ export function classifyMail(input: {
 }): MailVerdict {
   // The person wrote it. Nothing below may overrule that.
   if (input.labelIds.includes('SENT')) return { keep: true };
+
+  // Past this point, only a reply counts — a message that itself answers an
+  // earlier one. `In-Reply-To` and `References` are set by every mail client
+  // whenever a message answers something, so an inbound reply the person
+  // received passes this exactly as readily as a reply they sent. What never
+  // passes is the first message in a new exchange, the one nothing yet
+  // answers: that is a deliberate trade-off, not an oversight. A single
+  // unanswered message reads exactly like cold outreach or automated mail
+  // from the outside, and there is no way to tell them apart from the message
+  // alone. It costs the opening line of a real correspondence — but
+  // `trimMailBody` below cuts a quoted original out of the reply that follows
+  // it, so that line is genuinely gone, not just unquoted; what usually
+  // survives instead is the reply restating the substance in its own words
+  // ("Confirmed — Mill Street it is"), which is normally enough to extract
+  // from.
+  const isReply =
+    input.header('in-reply-to').trim().length > 0 || input.header('references').trim().length > 0;
+  if (!isReply) {
+    return { keep: false, reason: 'not part of a reply thread' };
+  }
 
   const category = input.labelIds.find((label) => BULK_CATEGORY_LABELS.has(label));
   if (category) {
