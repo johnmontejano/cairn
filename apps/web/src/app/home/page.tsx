@@ -5,8 +5,9 @@ import { Badge, Callout, Card, EmptyState, ProgressSteps } from '@cairn/ui';
 import { AppShell } from '@/components/chrome';
 import { RecentDecisions } from '@/components/recent-decisions';
 import { ReviewQueue } from '@/components/review-queue';
+import { ConnectionTiles, SetupChecklist, homeChecklist } from '@/components/setup-status';
 import { csrfToken, requireContext, workspaceName } from '@/server/context';
-import { loadOverview } from '@/server/views';
+import { loadConnections, loadOverview } from '@/server/views';
 
 export const metadata = { title: 'Home' };
 export const dynamic = 'force-dynamic';
@@ -30,6 +31,12 @@ const MAX_IDENTITY_LEDE_CHARS = 220;
  * Once this many memories are approved, a connected AI is likely to have
  * something real to answer with — enough saved that answering something
  * plausible is likely.
+ *
+ * This changes what the connect card *says*, not whether it leads. It used to
+ * decide both, which demoted the product's whole point to last place in the
+ * list at exactly the moment a new person was still hunting for it. Below the
+ * threshold the card explains that connecting early is fine; above it, that
+ * there is already enough saved to answer with.
  */
 const CONNECT_CTA_APPROVED_THRESHOLD = 5;
 
@@ -79,6 +86,13 @@ export default async function HomePage() {
   const csrf = await csrfToken();
   const overview = await loadOverview(context);
   const name = await workspaceName(context);
+  // The full client list rather than `overview.hasConnectedAi`, because "is
+  // anything connected" was never the question people were actually asking —
+  // "is it working" was, and answering that needs each tool's own last-used
+  // stamp. One indexed select, on a page that already makes several.
+  const connections = await loadConnections(context);
+  const now = new Date();
+  const liveClients = connections.clients.filter((client) => !client.revokedAt);
 
   if (
     overview.approvedCount === 0 &&
@@ -123,6 +137,33 @@ export default async function HomePage() {
             : countLede}
         </p>
       )}
+
+      {/* Above everything, because "what do I do next" and "is it working" are
+          the two questions this page exists to answer, and both used to be
+          several screens down — behind a review queue that could run to
+          dozens of cards. The checklist removes itself once nothing is left. */}
+      <SetupChecklist
+        steps={homeChecklist({
+          hasWorkingAi: liveClients.some((c) => c.lastUsedAt !== null),
+          hasAnyAi: liveClients.length > 0,
+          sourceCount: overview.sourceCount,
+          approvedCount: overview.approvedCount,
+        })}
+      />
+
+      <section aria-labelledby="your-tools" style={{ marginBottom: '2.5rem' }}>
+        <div className="cairn-row" style={{ justifyContent: 'space-between' }}>
+          <h2 id="your-tools" className="cairn-section-title" style={{ marginBottom: '0.75rem' }}>
+            Your AI tools
+          </h2>
+          {liveClients.length > 0 ? (
+            <p className="cairn-meta">
+              <Link href="/connections">Connect another</Link>
+            </p>
+          ) : null}
+        </div>
+        <ConnectionTiles clients={connections.clients} now={now} />
+      </section>
 
       {/* A progress bar says work is happening. It does not say what that means
           for an answer asked right now, which is the thing worth knowing: a
@@ -228,7 +269,17 @@ export default async function HomePage() {
             here first.
           </EmptyState>
         ) : (
-          <ReviewQueue cards={overview.proposals} csrf={csrf} projectId={context.project.id} />
+          <>
+            {/* Reviewing is what makes every answer traceable, so it never goes
+                away — but it is also not a gate. Saying so stops the queue
+                reading as a chore that has to be cleared before anything else
+                can happen. */}
+            <p style={{ color: 'var(--cairn-ink-muted)', marginTop: 0 }}>
+              Keep the ones that are right. These wait here as long as you like, and nothing is
+              shared with an AI tool until you keep it.
+            </p>
+            <ReviewQueue cards={overview.proposals} csrf={csrf} projectId={context.project.id} />
+          </>
         )}
       </section>
 
@@ -250,24 +301,25 @@ export default async function HomePage() {
               </Link>
               <Link href="/sources" className="cairn-choice-card">
                 <span className="cairn-choice-card__title">Add more</span>
-                <span className="cairn-choice-card__body">Paste, upload, or connect an app.</span>
+                <span className="cairn-choice-card__body">
+                  Paste, upload, or connect Google Drive or Notion.
+                </span>
               </Link>
             </div>
             <p className="cairn-meta" style={{ marginTop: '0.875rem' }}>
-              <Link href="/connections">Manage your connected AI</Link>
+              <Link href="/connections">Manage your AI tools</Link>
             </p>
           </>
         ) : (
           <div className="cairn-choice-grid">
-            {overview.approvedCount >= CONNECT_CTA_APPROVED_THRESHOLD ? (
-              <Link href="/connections" className="cairn-choice-card cairn-choice-card--accent">
-                <span className="cairn-choice-card__title">Use this in an AI tool</span>
-                <span className="cairn-choice-card__body">
-                  You have enough saved that a connected tool can answer something real. Reversible
-                  at any time.
-                </span>
-              </Link>
-            ) : null}
+            <Link href="/connections" className="cairn-choice-card cairn-choice-card--accent">
+              <span className="cairn-choice-card__title">Use this in Claude, Codex or ChatGPT</span>
+              <span className="cairn-choice-card__body">
+                {overview.approvedCount >= CONNECT_CTA_APPROVED_THRESHOLD
+                  ? 'You have enough saved that a connected tool can answer something real. They all read the same memory, and it is reversible at any time.'
+                  : 'Set it up once and they all read this same memory. Doing it now is fine — anything you save later shows up without setting it up again.'}
+              </span>
+            </Link>
             <Link href="/ask" className="cairn-choice-card">
               <span className="cairn-choice-card__title">Ask a question</span>
               <span className="cairn-choice-card__body">
@@ -276,16 +328,10 @@ export default async function HomePage() {
             </Link>
             <Link href="/sources" className="cairn-choice-card">
               <span className="cairn-choice-card__title">Add more</span>
-              <span className="cairn-choice-card__body">Paste, upload, or connect an app.</span>
+              <span className="cairn-choice-card__body">
+                Paste, upload, or connect Google Drive or Notion.
+              </span>
             </Link>
-            {overview.approvedCount < CONNECT_CTA_APPROVED_THRESHOLD ? (
-              <Link href="/connections" className="cairn-choice-card">
-                <span className="cairn-choice-card__title">Use this in an AI tool</span>
-                <span className="cairn-choice-card__body">
-                  Let a tool you already use look things up here. Reversible at any time.
-                </span>
-              </Link>
-            ) : null}
           </div>
         )}
       </section>

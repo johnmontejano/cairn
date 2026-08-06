@@ -104,6 +104,15 @@ export class McpAuthenticator {
       throw new InsufficientScopeError('memory:read');
     }
 
+    // The same stamp the other two authentication paths write, and its absence
+    // here was a silent hole: this is the path every OAuth-connected tool
+    // actually takes, so `mcp_clients.last_used_at` stayed null forever in
+    // production while the connections table dutifully rendered "Not yet" for
+    // a tool that had been answering questions all week. `findAccessToken`
+    // already stamps the token row, but the column the interface reads is this
+    // one, and a status nobody can trust is worse than no status at all.
+    await withSystem(this.handle, (tx) => clientsRepo.touchClient(tx, resolved.mcpClientId));
+
     return {
       actor: {
         userId: null,

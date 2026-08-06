@@ -28,13 +28,35 @@ export function Wordmark({ withName = true }: { withName?: boolean }) {
   );
 }
 
+/**
+ * Second position, and named after what a person is looking for.
+ *
+ * "Connected AIs" is the product's own phrase, not the visitor's: someone
+ * scanning this row for Claude, ChatGPT or Codex does not stop on it, and
+ * "Sources" sitting above it pulled them toward document import instead —
+ * which is not what most people came for. "AI tools" is the phrase they
+ * arrived with, and putting it directly after Home makes the thing the
+ * product is actually for the first choice after "where am I".
+ */
+/**
+ * Five sections, not seven.
+ *
+ * "Apps" rather than "Sources" because that is the word people use for the
+ * things they connect; "Sources" was Cairn's internal name for the same idea
+ * and made the section sound like a developer setting.
+ *
+ * Ask and History are gone from the bar but not from the product: asking now
+ * lives at the top of Memory, where what you can ask about is already on
+ * screen, and History is linked from Settings and from Home's own "last
+ * change" line. Both routes still work, so nothing anyone bookmarked breaks.
+ * Seven top-level choices made the one that matters — connecting a tool —
+ * just another word in a row of words.
+ */
 const NAV = [
   { href: '/home', label: 'Home' },
-  { href: '/sources', label: 'Sources' },
+  { href: '/connections', label: 'AI tools' },
+  { href: '/sources', label: 'Apps' },
   { href: '/memory', label: 'Memory' },
-  { href: '/ask', label: 'Ask' },
-  { href: '/connections', label: 'Connected AIs' },
-  { href: '/history', label: 'History' },
   { href: '/settings', label: 'Settings' },
 ];
 

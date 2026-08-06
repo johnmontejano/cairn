@@ -17,9 +17,18 @@ export const dynamic = 'force-dynamic';
 /**
  * First run.
  *
- * One question, four ways to answer it, and no vocabulary a person has to learn
- * first. The AI-connection step is deliberately not here: it appears only after
- * there is something worth connecting to.
+ * One question, five ways to answer it, and no vocabulary a person has to learn
+ * first.
+ *
+ * Connecting an AI tool leads, and deliberately so. It used to be held back
+ * until there was something worth connecting to, on the reasoning that an
+ * empty memory makes a poor first impression — but most people arrive wanting
+ * exactly one thing, which is for the tools they already use to stop asking
+ * them the same questions. Hiding that behind a nav label they were not
+ * looking for meant the only screen a new person sees never mentioned it at
+ * all. Connecting first costs nothing: a connection made now picks up
+ * everything saved afterwards without being set up again, and the lede says so
+ * plainly so nobody reads an empty first answer as the product being broken.
  */
 export default async function WelcomePage({
   searchParams,
@@ -42,11 +51,22 @@ export default async function WelcomePage({
       <h1 className="cairn-page-title">What would you like your AI to remember?</h1>
       <p className="cairn-page-lede">
         Anything you find yourself explaining over and over. A project, how you like things done,
-        who is involved, what was decided.
+        who is involved, what was decided. Start wherever you like — hooking up your AI tools first
+        is fine, and whatever you save later shows up in them without setting anything up again.
       </p>
 
       {!how ? (
         <div className="cairn-choice-grid">
+          {/* First, and on purpose. The reason most people are here is that they
+              are tired of telling Claude, Codex and ChatGPT the same things, and
+              this is the only card that answers that. */}
+          <Link href="/connections" className="cairn-choice-card cairn-choice-card--accent">
+            <span className="cairn-choice-card__title">Connect Claude, Codex or ChatGPT</span>
+            <span className="cairn-choice-card__body">
+              Set it up once and they all read from the same memory. About two minutes, and you can
+              do it before you have saved anything.
+            </span>
+          </Link>
           <ActionForm action={loadExample} csrf={csrf} hidden={{ projectId: context.project.id }}>
             <button type="submit" className="cairn-choice-card">
               <span className="cairn-choice-card__title">Try an example</span>
@@ -65,8 +85,11 @@ export default async function WelcomePage({
             <span className="cairn-choice-card__title">Upload a file</span>
             <span className="cairn-choice-card__body">A Word document, a PDF, or a text file.</span>
           </Link>
+          {/* Named after the actual services rather than "an app", which read as
+              the AI-tool option and sent people looking for Claude to a page
+              about document storage. */}
           <Link href="/sources" className="cairn-choice-card">
-            <span className="cairn-choice-card__title">Connect an app</span>
+            <span className="cairn-choice-card__title">Connect Google Drive or Notion</span>
             <span className="cairn-choice-card__body">
               Keep memory up to date from somewhere you already keep documents.
             </span>
@@ -124,6 +147,7 @@ export default async function WelcomePage({
           </h2>
           <p style={{ color: 'var(--cairn-ink-muted)', marginTop: 0 }}>
             Nothing is saved until you keep it. Anything you remove can be undone from History.
+            There is no rush — leave these and they will be waiting on Home.
           </p>
           <div className="cairn-stack cairn-stack--md">
             {overview.proposals.slice(0, 6).map((card) => (

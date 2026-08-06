@@ -203,7 +203,7 @@ export function SignInFlow({
             </SubmitButton>
           </div>
         </>
-      ) : (
+      ) : demoMode ? (
         <>
           <Field
             id={emailId}
@@ -227,6 +227,18 @@ export function SignInFlow({
           </Field>
           <div>
             <SubmitButton size="lg" busyLabel="Sending…">
+              Continue
+            </SubmitButton>
+          </div>
+        </>
+      ) : (
+        // Hosted sign-in collects the email itself, on its own page — asking
+        // for it again here would be the same question twice, the first
+        // answer thrown away. One button, straight there.
+        <>
+          {state.error ? <Callout tone="warn">{state.error}</Callout> : null}
+          <div>
+            <SubmitButton size="lg" busyLabel="Opening…">
               Continue
             </SubmitButton>
           </div>

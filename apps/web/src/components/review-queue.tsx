@@ -1,7 +1,7 @@
 import { Card, CardHeader, Stack } from '@cairn/ui';
 import { ActionForm, SubmitButton } from '@/components/forms';
 import { MemoryCard, providerLabel } from '@/components/memory-card';
-import { keepAllFromSource } from '@/server/actions';
+import { keepAllFromSource, removeAllFromSource } from '@/server/actions';
 import type { MemoryCardView } from '@/server/views';
 
 /**
@@ -126,11 +126,21 @@ export function ReviewQueue({
 }
 
 /**
- * A "keep all from this source" fast path alongside the ordinary per-item
+ * Fast paths for a whole batch from one place, alongside the ordinary per-item
  * review — not instead of it. Every card inside still has its own full
  * Keep/Edit/Remove controls (rendered by `MemoryCard` unchanged), so nothing
- * about reviewing one at a time is lost; this is only a shortcut for the common
- * case of trusting a whole batch from one place.
+ * about reviewing one at a time is lost.
+ *
+ * Both directions are offered, because both are common and only one of them
+ * was: a batch from a colleague's mail is usually worth keeping wholesale, and
+ * a batch from a newsletter is usually worth turning down wholesale. Offering
+ * only "keep all" left the second case as the slow one, which is backwards —
+ * the junk is what there is most of.
+ *
+ * "Remove all" is deliberately the quieter of the two controls. It is
+ * reversible (rejection soft-deletes, and History can put anything back), but
+ * it should still read as the secondary choice rather than sitting level with
+ * keeping.
  */
 export function SourceGroupCard({
   group,
@@ -141,24 +151,29 @@ export function SourceGroupCard({
   csrf: string;
   projectId: string;
 }) {
+  const memoryItemId = group.cards.map((c) => c.item.id);
   return (
     <Card>
       <CardHeader
         title={`${providerLabel(group.provider)} — ${group.label}`}
-        description={`${group.cards.length} things found here are waiting for you. Keeping all of them is reversible — remove any of them below afterward, the same as any other memory.`}
+        description={`${group.cards.length} things found here are waiting for you. Either way is reversible — you can change any of them afterward, or from History.`}
         actions={
-          <ActionForm
-            action={keepAllFromSource}
-            csrf={csrf}
-            hidden={{
-              projectId,
-              memoryItemId: group.cards.map((c) => c.item.id),
-            }}
-          >
-            <SubmitButton busyLabel="Keeping…">
-              Keep all {group.cards.length} from this source
-            </SubmitButton>
-          </ActionForm>
+          <div className="cairn-row">
+            <ActionForm action={keepAllFromSource} csrf={csrf} hidden={{ projectId, memoryItemId }}>
+              <SubmitButton busyLabel="Keeping…">
+                Keep all {group.cards.length} from this source
+              </SubmitButton>
+            </ActionForm>
+            <ActionForm
+              action={removeAllFromSource}
+              csrf={csrf}
+              hidden={{ projectId, memoryItemId }}
+            >
+              <SubmitButton tone="quiet" busyLabel="Removing…">
+                Remove all {group.cards.length}
+              </SubmitButton>
+            </ActionForm>
+          </div>
         }
       />
       <Stack gap="sm">

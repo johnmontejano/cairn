@@ -7,7 +7,7 @@ import { createConnectedAi, revokeConnectedAi } from '@/server/actions';
 import { csrfToken, requireContext } from '@/server/context';
 import { loadConnections } from '@/server/views';
 
-export const metadata = { title: 'Connected AIs' };
+export const metadata = { title: 'AI tools' };
 export const dynamic = 'force-dynamic';
 
 /**
@@ -42,12 +42,13 @@ interface McpClientCard {
   /**
    * Folded-away second routes.
    *
-   * The important one is the prompt you hand the tool itself. For Claude Code
-   * and Codex the setup *is* a command, and those two can run a command — so
-   * the shortest honest instruction is not "open a terminal and type this", it
-   * is "tell it to do this". Every such prompt stops at the sign-in and hands
-   * that part back, because an agent must never be the thing holding your
-   * password. Tools where setup is a menu toggle get no prompt: an agent
+   * The important one is the prompt you hand the tool itself. For Claude Code,
+   * Codex and Gemini the setup *is* a command, and those three can run a
+   * command — so the shortest honest instruction is not "open a terminal and
+   * type this", it is "tell it to do this". Every such prompt stops at the
+   * sign-in and hands that part back, because an agent must never be the thing
+   * holding your password. Tools where setup is a menu toggle get no prompt: an
+   * agent
    * cannot click a menu in someone else's app, and pretending otherwise sends
    * people down a dead end.
    */
@@ -82,6 +83,11 @@ function mcpClients(signInMode: boolean, mcpUrl: string): ReadonlyArray<McpClien
         supported: true,
       },
       {
+        name: 'Gemini in your terminal',
+        how: 'Run the gemini mcp add command in your terminal, with the connection code as the token.',
+        supported: true,
+      },
+      {
         name: 'ChatGPT',
         how: 'Needs the sign-in method this copy of Cairn does not have turned on. Connection codes are the tested path here.',
         supported: false,
@@ -89,7 +95,9 @@ function mcpClients(signInMode: boolean, mcpUrl: string): ReadonlyArray<McpClien
     ];
   }
   // Claude Code and Codex first: they are the pair most people want talking to
-  // each other, and they are the two that can do their own setup.
+  // each other. Gemini follows them because it is the third that is one command
+  // and can do its own setup. The two that need a menu, an owner or a plan come
+  // after, and the one that does not work yet is last.
   return [
     {
       name: 'Claude Code',
@@ -131,8 +139,37 @@ function mcpClients(signInMode: boolean, mcpUrl: string): ReadonlyArray<McpClien
         },
         {
           summary: 'If you use the Codex editor extension or the ChatGPT desktop app',
-          body: `Same thing through the menus: open MCP servers in settings, add a server called ${PRODUCT.slug}, choose Streamable HTTP, and paste this address. Save, restart, then choose Authenticate next to ${PRODUCT.slug}. The terminal, the editor extension and the desktop app share one set of settings, so doing it in any one of them covers all three.`,
+          body: `In the ChatGPT desktop app, switch to the Codex side first — Cairn attaches to Codex, not to ordinary ChatGPT chat. Then, in either app, open settings and find the servers section (some versions call it MCP servers, others Integrations and MCP — same place), add a server called ${PRODUCT.slug}, choose Streamable HTTP, and paste this address. Save, restart, then choose Authenticate next to ${PRODUCT.slug}. The terminal, the editor extension and the Codex side of the desktop app share one set of settings, so doing it in any one of them covers all three. If your ChatGPT plan does not include Codex, that settings section is not there at all.`,
           copy: { value: mcpUrl, label: 'Copy address' },
+        },
+      ],
+    },
+    {
+      name: 'Gemini in your terminal',
+      how: 'Paste this into your terminal, then sign in from inside Gemini. Your browser opens so you can say yes here.',
+      supported: true,
+      copy: {
+        value: `gemini mcp add --transport http --scope user ${PRODUCT.slug} ${mcpUrl}`,
+        label: 'Copy command',
+      },
+      note: `The first time you start Gemini it says Cairn needs signing in. That message is expected, not a mistake: type /mcp auth ${PRODUCT.slug} to sign in, then /mcp to check. Signing in needs Gemini version 0.30 or newer.`,
+      extras: [
+        {
+          summary: 'Or ask Gemini to set it up',
+          body: 'Paste this into a Gemini session and it does the setup itself. It stops at the sign-in and hands that part back to you.',
+          copy: {
+            value: `Set up my ${PRODUCT.name} memory in Gemini. Run: gemini mcp add --transport http --scope user ${PRODUCT.slug} ${mcpUrl} — keep --transport http and --scope user exactly as written, and do not add a header, a token or a key. Then run gemini mcp list, show me what it says, and tell me to type /mcp auth ${PRODUCT.slug} so I can sign in myself. Never ask me for a password, a token or a key.`,
+            label: 'Copy prompt',
+          },
+        },
+        {
+          summary: 'If Gemini is not on your computer yet',
+          body: 'You need Node.js version 20 or newer first — if you do not have it, get it from nodejs.org. Then run this in your terminal. Running it again is also how you get the newest version later.',
+          copy: { value: 'npm install -g @google/gemini-cli@latest', label: 'Copy command' },
+        },
+        {
+          summary: 'If Gemini says it lost the connection',
+          body: 'Some versions of Gemini drop the connection shortly after you sign in. Quit Gemini, start it again, and type /mcp. If it keeps happening, install the newest version using the step above. On a computer with no browser, signing in cannot work at all — make a connection code further down this page and use that instead.',
         },
       ],
     },
@@ -150,14 +187,37 @@ function mcpClients(signInMode: boolean, mcpUrl: string): ReadonlyArray<McpClien
       ],
     },
     {
-      name: 'ChatGPT in your browser',
-      how: 'Not dependable yet here — it needs a Business or Enterprise workspace with developer mode switched on first. Use the ChatGPT desktop app instead: set up Codex above and the desktop app picks it up.',
-      supported: false,
+      // Antigravity is the one tool here that cannot use the sign-in flow.
+      // Its own sign-in for servers like this is known to be broken — it
+      // forgets to send the pass on the first request and the connection is
+      // refused — so a connection code is the honest route rather than the
+      // consolation prize. Saying which part is broken, and whose, is the
+      // difference between a person retrying forever and a person finishing.
+      name: 'Antigravity',
+      how: 'Make a connection code below, paste it into the code here, then put the whole thing in Antigravity’s server settings file.',
+      supported: true,
+      copy: {
+        value: `{
+  "mcpServers": {
+    "${PRODUCT.slug}": {
+      "serverUrl": "${mcpUrl}",
+      "headers": {
+        "Authorization": "Bearer PASTE_YOUR_CONNECTION_CODE_HERE"
+      }
+    }
+  }
+}`,
+        label: 'Copy settings',
+      },
+      note: 'In Antigravity, open the Agent panel on the right, choose MCP Servers, then Manage MCP Servers, then View raw config — that opens the right file whichever version you have. Paste this inside, save, and press Refresh.',
       extras: [
         {
-          summary: 'If you do have a Business or Enterprise workspace',
-          body: 'An admin turns on developer mode for the workspace, then you open Apps in your settings, choose Create, paste this address, and pick sign-in when it asks how to connect. Two things to expect: it may only be able to look things up, and you may have to sign in again after a while.',
-          copy: { value: mcpUrl, label: 'Copy address' },
+          summary: 'Why this one needs a code and the others do not',
+          body: 'Antigravity can sign in to servers like Cairn on paper, but in the versions shipping today it forgets to send the pass on its first request, so the connection is refused. Google has an open report about it. A connection code sidesteps that entirely. If a later version fixes it, you can delete the Authorization line and use the sign-in instead.',
+        },
+        {
+          summary: 'If it does not appear after saving',
+          body: 'Quit Antigravity completely and open it again — some versions only read that file at startup. Then ask it “what Cairn tools do you have?” If it names them, it is genuinely connected. One thing to watch: the address line must say serverUrl. Settings copied from Cursor or VS Code say url instead, and Antigravity ignores those without showing an error.',
         },
       ],
     },
@@ -166,6 +226,19 @@ function mcpClients(signInMode: boolean, mcpUrl: string): ReadonlyArray<McpClien
       how: 'In Cursor settings, add Cairn under MCP with this address. It sends you here to approve.',
       supported: true,
       copy: { value: mcpUrl, label: 'Copy address' },
+    },
+    {
+      name: 'ChatGPT in your browser',
+      how: 'Not dependable yet here — it needs a Business or Enterprise workspace with developer mode switched on first. The desktop app is the better route: set up Codex above, then switch to the Codex side of the desktop app, where Cairn is already waiting.',
+      supported: false,
+      note: 'Ordinary ChatGPT chat, in the browser or in the desktop app, does not read the Codex settings, so Cairn does not appear there.',
+      extras: [
+        {
+          summary: 'If you do have a Business or Enterprise workspace',
+          body: 'An admin turns on developer mode for the workspace, then you open Apps in your settings, choose Create, paste this address, and pick sign-in when it asks how to connect. Two things to expect: it may only be able to look things up, and you may have to sign in again after a while.',
+          copy: { value: mcpUrl, label: 'Copy address' },
+        },
+      ],
     },
   ];
 }
@@ -212,7 +285,7 @@ export default async function ConnectionsPage() {
 
   return (
     <AppShell current="/connections" email={context.email}>
-      <h1 className="cairn-page-title">Connected AIs</h1>
+      <h1 className="cairn-page-title">AI tools</h1>
       <p className="cairn-page-lede">
         You can let an AI tool you already use look things up in your memory, so you stop repeating
         yourself. It only ever sees what you have saved, and only what you allow.

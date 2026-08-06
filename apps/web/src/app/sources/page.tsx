@@ -1,9 +1,6 @@
+import Link from 'next/link';
 import { CONNECTOR_DESCRIPTIONS } from '@cairn/connectors';
-import {
-  MINIMUM_CONNECTED_APPS,
-  RECOMMENDED_CONNECTED_APPS,
-  type SourceProvider,
-} from '@cairn/domain';
+import { RECOMMENDED_CONNECTED_APPS, type SourceProvider } from '@cairn/domain';
 import { Badge, Callout, Card, Disclosure, EmptyState } from '@cairn/ui';
 import { SUPPORTED_UPLOAD_EXTENSIONS } from '@cairn/ingestion';
 import { AppShell } from '@/components/chrome';
@@ -48,20 +45,21 @@ function sinceInWords(when: Date, now = new Date()): string {
 }
 
 /**
- * "Works from N, better from 3" — said once, plainly.
+ * How much is connected, said once and plainly.
  *
- * Two is where the product proves the mechanism; three is where the answers
- * actually get good. Neither number is a failure state, so the wording never
- * tells anyone they are short of anything — it just says what is true at each
- * count.
+ * This used to quote the two internal thresholds — "works from 2, better from
+ * 3" — as if they were targets the reader had agreed to. They are tuning
+ * figures for the answer quality, and printed as bare numbers they read as a
+ * quota someone is behind on. What is actually true is simpler: none of this
+ * is required, and each one added gives answers more to draw on.
  */
 function connectedAppsNote(count: number): string {
   const sources = (n: number) => `${n} source${n === 1 ? '' : 's'}`;
   if (count >= RECOMMENDED_CONNECTED_APPS) return `${sources(count)} connected.`;
   if (count === 0) {
-    return `Nothing connected yet. Works from ${MINIMUM_CONNECTED_APPS}, and gets noticeably better from ${RECOMMENDED_CONNECTED_APPS}.`;
+    return 'Nothing connected, which is fine — pasting and uploading work on their own. Connecting one keeps your memory up to date without you doing anything.';
   }
-  return `Works from ${sources(count)}. Gets noticeably better from ${RECOMMENDED_CONNECTED_APPS}.`;
+  return `${sources(count)} connected. Each one you add gives your answers more to draw on.`;
 }
 
 export default async function SourcesPage() {
@@ -90,6 +88,17 @@ export default async function SourcesPage() {
         Where your memory comes from. Everything here is read-only: nothing is ever changed in the
         places you connect.
       </p>
+
+      {/* People arrive here looking for Claude and ChatGPT, because "connect an
+          app" sounds like the AI-tool step. Say where that actually lives
+          before they read a page about document storage and conclude this is a
+          file-sync product. */}
+      <div style={{ marginBottom: '2rem' }}>
+        <Callout tone="info" title="Looking for Claude, Codex or ChatGPT?">
+          Those are under <Link href="/connections">AI tools</Link>. This page is about the
+          documents your memory is built from.
+        </Callout>
+      </div>
 
       <section aria-labelledby="add-now" style={{ marginBottom: '2.5rem' }}>
         <h2 id="add-now" className="cairn-section-title">
@@ -205,7 +214,10 @@ export default async function SourcesPage() {
                 {entry.status === 'ready' ? (
                   <Badge tone="good">Ready</Badge>
                 ) : (
-                  <Badge tone="warn">Setup required</Badge>
+                  // Not "Setup required": nothing is required of the reader.
+                  // Whoever runs this copy of Cairn is the one who has not
+                  // finished, and the card below says so.
+                  <Badge tone="warn">Sample documents only</Badge>
                 )}
               </div>
               {entry.status !== 'ready' ? (
@@ -226,7 +238,7 @@ export default async function SourcesPage() {
                   hidden={{ provider: entry.provider, projectId }}
                 >
                   <SubmitButton tone="primary" busyLabel="Connecting…">
-                    {entry.status === 'ready' ? 'Connect' : 'Add in demo form'}
+                    {entry.status === 'ready' ? 'Connect' : 'Try it with sample documents'}
                   </SubmitButton>
                 </ActionForm>
               </div>
@@ -237,11 +249,11 @@ export default async function SourcesPage() {
         {unavailableHere.length > 0 ? (
           <>
             <h3 className="cairn-section-title" style={{ marginTop: '1.75rem' }}>
-              Not available on this deployment
+              Not switched on here
             </h3>
             <p style={{ color: 'var(--cairn-ink-muted)', marginTop: 0 }}>
-              Whoever runs this copy of the app has not turned these on, and that will not change
-              without a redeploy — there is nothing to try here.
+              Whoever runs this copy of Cairn has not switched these on. Nothing you can do on this
+              page will change that, so there is nothing to try — everything above still works.
             </p>
             <div className="cairn-grid">
               {unavailableHere.map((entry) => (
@@ -251,7 +263,7 @@ export default async function SourcesPage() {
                       <h4 className="cairn-card__title">{entry.description.displayName}</h4>
                       <p className="cairn-card__description">{entry.description.summary}</p>
                     </div>
-                    <Badge tone="neutral">Not available on this deployment</Badge>
+                    <Badge tone="neutral">Not switched on here</Badge>
                   </div>
                   <Disclosure summary="What it would read, if it were available">
                     <p>{entry.description.permissionSummary}</p>
@@ -337,7 +349,9 @@ export default async function SourcesPage() {
                     </td>
                     <td>{job.attempts}</td>
                     <td>{job.durationMs ? `${job.durationMs} ms` : '—'}</td>
-                    <td>{job.lastError ? `${job.errorCategory}: ${job.lastError}` : '—'}</td>
+                    <td>
+                      {job.lastError ? problemInWords(job.errorCategory, job.lastError) : '—'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -355,7 +369,7 @@ function describe(provider: SourceProvider) {
 
 function ConnectionBadge({ state }: { state: string }) {
   if (state === 'active') return <Badge tone="good">Connected</Badge>;
-  if (state === 'setup_required') return <Badge tone="warn">Demo — setup required</Badge>;
+  if (state === 'setup_required') return <Badge tone="warn">Sample documents only</Badge>;
   if (state === 'needs_reconnect') return <Badge tone="warn">Needs reconnecting</Badge>;
   if (state === 'disconnected') return <Badge tone="neutral">Disconnected</Badge>;
   return <Badge tone="danger">Problem</Badge>;
@@ -375,13 +389,51 @@ function jobLabel(type: string): string {
       return 'Reading a document';
     case 'source.extract':
       return 'Finding what to remember';
+    case 'memory.reconcile':
+      return 'Checking for disagreements';
     case 'index.rebuild':
       return 'Rebuilding search';
     case 'connection.sync':
       return 'Checking a connected app';
     case 'vault.commit':
       return 'Saving a new version';
+    case 'backup.create':
+      return 'Making a backup';
+    case 'workspace.delete':
+      return 'Deleting a workspace';
+    case 'query.deep':
+      return 'Answering a long question';
+    // A new kind of work should never surface its internal name here. The row
+    // is about whether something finished, and "Background work" answers that
+    // just as well as a dotted identifier nobody can act on.
     default:
-      return type;
+      return 'Background work';
+  }
+}
+
+/**
+ * The stored failure, in words.
+ *
+ * `errorCategory` is a `DomainError` code — `setup_required`, `budget_exceeded`,
+ * `transient` — and printing it raw put snake_case identifiers in a table cell
+ * on a page ordinary people read. The underlying message is already written for
+ * a person, so the category only needs to say what kind of problem it was, and
+ * only when it adds something.
+ */
+function problemInWords(category: string | null, message: string): string {
+  switch (category) {
+    case 'setup_required':
+      return `Not set up yet — ${message}`;
+    case 'budget_exceeded':
+      return `Monthly limit reached — ${message}`;
+    case 'unauthorized':
+    case 'forbidden':
+      return `Permission was refused — ${message}`;
+    case 'not_found':
+      return `Could not be found — ${message}`;
+    case 'transient':
+      return `A temporary problem — ${message}`;
+    default:
+      return message;
   }
 }

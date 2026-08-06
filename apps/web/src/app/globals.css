@@ -144,6 +144,24 @@ a:hover {
   }
 }
 
+/* On a phone the seven sections wrap into a ragged block squeezed between the
+   wordmark and Sign out, which reads as clutter rather than as a set of
+   choices. Given the whole width they settle into two even rows. Nothing is
+   hidden behind a menu: every section stays one tap away, and the tap target
+   keeps its `--cairn-target` minimum height — only the horizontal padding
+   tightens. */
+@media (max-width: 40rem) {
+  .cairn-nav {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+  }
+  .cairn-nav__link {
+    padding-inline: 0.6875rem;
+    font-size: var(--cairn-text-sm);
+  }
+}
+
 .cairn-header__actions {
   display: flex;
   align-items: center;
@@ -461,6 +479,153 @@ pre.cairn-code {
 }
 .cairn-step__body {
   margin: 0;
+  color: var(--cairn-ink-muted);
+  font-size: var(--cairn-text-sm);
+}
+
+/* ------------------------------- setup ----------------------------------- *
+ * "What do I do next", at the top of Home until there is nothing left to do.
+ * It removes itself when every step is done rather than sitting there as a
+ * row of ticks congratulating someone for finishing — a checklist that never
+ * leaves becomes furniture, and furniture gets ignored. */
+
+.cairn-setup {
+  border: 1px solid var(--cairn-border);
+  border-radius: var(--cairn-radius-lg);
+  background: var(--cairn-surface);
+  padding: clamp(1.125rem, 3vw, 1.75rem);
+  margin-bottom: 2rem;
+}
+.cairn-setup__head {
+  margin-bottom: 1.25rem;
+}
+.cairn-setup__title {
+  font-family: var(--cairn-font-serif);
+  font-size: var(--cairn-text-lg);
+  font-weight: 650;
+  margin: 0 0 0.25rem;
+}
+.cairn-setup__lede {
+  margin: 0;
+  color: var(--cairn-ink-muted);
+  font-size: var(--cairn-text-sm);
+}
+.cairn-setup__steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+.cairn-setup__step {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  gap: 0.875rem;
+  align-items: start;
+}
+.cairn-setup__mark {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: var(--cairn-surface-sunken);
+  border: 1px solid var(--cairn-border-strong);
+  color: var(--cairn-ink-muted);
+  font-size: var(--cairn-text-xs);
+  font-weight: 700;
+}
+.cairn-setup__step.is-done .cairn-setup__mark {
+  background: var(--cairn-good-soft);
+  border-color: var(--cairn-good);
+  color: var(--cairn-good);
+}
+.cairn-setup__step-title {
+  margin: 0.125rem 0 0.1875rem;
+  font-size: 1rem;
+  font-weight: 650;
+  font-family: var(--cairn-font-sans);
+  letter-spacing: 0;
+}
+/* Done steps recede rather than disappear: seeing what is already handled is
+   what makes the remaining count trustworthy. */
+.cairn-setup__step.is-done .cairn-setup__step-title,
+.cairn-setup__step.is-done .cairn-setup__step-body {
+  color: var(--cairn-ink-subtle);
+}
+.cairn-setup__step-body {
+  margin: 0;
+  color: var(--cairn-ink-muted);
+  font-size: var(--cairn-text-sm);
+}
+.cairn-setup__action {
+  display: inline-block;
+  margin-top: 0.4375rem;
+  font-size: var(--cairn-text-sm);
+  font-weight: 600;
+}
+
+/* ------------------------------ tool tiles -------------------------------- *
+ * Which tools are connected, and whether they are actually being used. The
+ * status is the reason anyone looks, so it gets the colour and the position;
+ * the rest is small print. */
+
+.cairn-tiles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.875rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(15rem, 100%), 1fr));
+}
+.cairn-tile {
+  display: grid;
+  grid-template-columns: 0.625rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+  border: 1px solid var(--cairn-border);
+  border-radius: var(--cairn-radius);
+  background: var(--cairn-surface);
+  padding: 0.875rem 1rem;
+}
+.cairn-tile__dot {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 999px;
+  margin-top: 0.375rem;
+  background: var(--cairn-ink-subtle);
+}
+.cairn-tile__dot--working {
+  background: var(--cairn-good);
+}
+.cairn-tile__dot--idle {
+  background: var(--cairn-warn);
+}
+.cairn-tile__dot--off {
+  background: var(--cairn-ink-subtle);
+}
+.cairn-tile__name {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+  font-family: var(--cairn-font-sans);
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+.cairn-tile__state {
+  margin: 0.125rem 0 0;
+  font-size: var(--cairn-text-sm);
+  font-weight: 550;
+}
+.cairn-tile__meta {
+  margin: 0.1875rem 0 0;
+  color: var(--cairn-ink-subtle);
+  font-size: var(--cairn-text-xs);
+}
+.cairn-tiles__empty {
+  border: 1px dashed var(--cairn-border-strong);
+  border-radius: var(--cairn-radius);
+  padding: 1.25rem;
   color: var(--cairn-ink-muted);
   font-size: var(--cairn-text-sm);
 }

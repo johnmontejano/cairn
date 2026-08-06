@@ -147,6 +147,25 @@ export async function continueSignIn(
     const returnTo = safeReturnPath(String(formData.get('next') ?? '') || null);
 
     if (challengeId.length === 0) {
+      const provider = createAuthProvider(services.handle, services.config);
+
+      // A hosted provider collects the email itself on its own page — asking
+      // for it here first would mean typing it twice into two different
+      // forms, the second one having thrown the first away. This app never
+      // sees it, so there is nothing here to validate or rate-limit by; the
+      // hosted page is where that protection actually lives.
+      if (provider.kind !== 'fixture') {
+        const started = await provider.startEmailSignIn('');
+        if (started.kind === 'redirect' && started.url) {
+          await setOAuthStateCookie(started.challengeId);
+          await setAfterSignInCookie(returnTo);
+          redirect(started.url);
+        }
+        // A hosted provider should always redirect; this is a fallback for a
+        // misconfigured one, not a path anyone is expected to hit.
+        return { stage: 'email', error: 'Sign-in is not available right now.' };
+      }
+
       const email = String(formData.get('email') ?? '')
         .trim()
         .toLowerCase();
@@ -158,17 +177,7 @@ export async function continueSignIn(
         return { stage: 'email', error: 'Too many sign-in attempts. Try again in a few minutes.' };
       }
 
-      const provider = createAuthProvider(services.handle, services.config);
       const started = await provider.startEmailSignIn(email);
-      if (started.kind === 'redirect' && started.url) {
-        // `challengeId` carries the state nonce for this branch — see the
-        // comment on `WorkOsAuthProvider.startEmailSignIn`. Stashed here so
-        // the callback route can reject a forged or replayed `state`.
-        await setOAuthStateCookie(started.challengeId);
-        await setAfterSignInCookie(returnTo);
-        redirect(started.url);
-      }
-
       return {
         ok: true,
         stage: 'code',
@@ -507,6 +516,61 @@ export async function keepAllFromSource(
           : `Kept ${kept} of ${memoryItemIds.length} from this source (${skipped} could not be kept${
               firstError ? `: ${firstError}` : ''
             }). Reversible — remove any of them below, or from History.`,
+    };
+  });
+}
+
+/**
+ * Removing every proposed memory from one source in a single request.
+ *
+ * The mirror of {@link keepAllFromSource}, and needed for the same reason: a
+ * newsletter or a marketing mail routinely yields a handful of things nobody
+ * wants remembered, and dismissing them one at a time is the work the grouping
+ * exists to remove. Turning a batch down should cost exactly what trusting one
+ * does.
+ *
+ * This rejects rather than deletes — `rejectMemoryItem` soft-deletes and writes
+ * an audit entry, so History can still show what happened and undo it. Nothing
+ * here destroys the underlying document; the source stays exactly where it was.
+ */
+export async function removeAllFromSource(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  return guard(async () => {
+    await assertCsrf(formData);
+    const context = await requireContext();
+    const memoryItemIds = [...new Set(formData.getAll('memoryItemId').map(String).filter(Boolean))];
+    if (memoryItemIds.length === 0) return { error: 'Nothing to remove.' };
+
+    let removed = 0;
+    let firstError: string | null = null;
+    for (const memoryItemId of memoryItemIds) {
+      try {
+        await rejectMemoryItem(context.services, context.actor, memoryItemId);
+        removed += 1;
+      } catch (error) {
+        if (isRedirectError(error)) throw error;
+        firstError =
+          error instanceof DomainError
+            ? error.userMessage
+            : 'Something went wrong for one of them.';
+      }
+    }
+    revalidateMemoryViews();
+
+    if (removed === 0) {
+      return { error: firstError ?? 'Could not remove any of them. Please try again.' };
+    }
+    const skipped = memoryItemIds.length - removed;
+    return {
+      ok: true,
+      message:
+        skipped === 0
+          ? `Removed ${removed} from this source. Reversible — put any of them back from History.`
+          : `Removed ${removed} of ${memoryItemIds.length} from this source (${skipped} could not be removed${
+              firstError ? `: ${firstError}` : ''
+            }). Reversible — put any of them back from History.`,
     };
   });
 }

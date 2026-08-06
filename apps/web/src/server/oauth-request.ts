@@ -26,6 +26,54 @@ export interface ValidAuthorizationRequest {
   state: string | null;
 }
 
+/** `http://` on a loopback host — the only place a redirect may vary by port. */
+function loopbackUrl(raw: string): URL | null {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'http:') return null;
+  const host = url.hostname;
+  return host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '::1'
+    ? url
+    : null;
+}
+
+/**
+ * Whether a requested redirect URI is one this client registered.
+ *
+ * Exact string match, with the single exception RFC 8252 §7.3 requires: for a
+ * loopback address the authorization server MUST accept any port, because a
+ * command-line tool cannot know which port is free until it binds one. Codex
+ * is exactly this case — it binds an ephemeral port, then registers and
+ * authorizes against it — and so are Gemini CLI, VS Code and `mcp-remote`.
+ * Without this, a tool that registers on one port and returns on another is
+ * turned away at the consent screen with an error the person cannot act on.
+ *
+ * Only the port is allowed to differ. Scheme, host, path and query must still
+ * match exactly: relaxing the path is how a code gets smuggled to somewhere
+ * the real client does not own, and the loopback exemption is not a licence
+ * for prefix matching. Non-loopback URIs get no leniency at all.
+ */
+export function redirectUriAllowed(registered: readonly string[], requested: string): boolean {
+  if (registered.includes(requested)) return true;
+
+  const want = loopbackUrl(requested);
+  if (!want) return false;
+
+  return registered.some((raw) => {
+    const have = loopbackUrl(raw);
+    return (
+      have !== null &&
+      have.hostname === want.hostname &&
+      have.pathname === want.pathname &&
+      have.search === want.search
+    );
+  });
+}
+
 /** A problem that must be rendered on Cairn's page, because nothing is trusted yet. */
 export interface UnredirectableError {
   kind: 'show';
@@ -80,9 +128,7 @@ export async function validateAuthorizationRequest(
   if (!redirectUri) {
     return show('This connection request is incomplete', 'It did not say where to send you back.');
   }
-  // Exact string match against what was registered. Prefix or host matching is
-  // how an attacker smuggles a code to a path the real client does not own.
-  if (!client.redirectUris.includes(redirectUri)) {
+  if (!redirectUriAllowed(client.redirectUris, redirectUri)) {
     return show(
       'That tool asked to return to an unexpected place',
       'The address it wants to send you back to is not one it registered. Nothing has been shared.',
