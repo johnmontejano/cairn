@@ -67,10 +67,14 @@ describe('authorization server metadata', () => {
     ).toBe(true);
   });
 
-  it('never advertises a scope that cannot be granted', () => {
+  it('never advertises a Cairn scope that cannot be granted', () => {
     const advertised = authorizationServerMetadata(oauthConfig()).scopes_supported as string[];
     expect(advertised).not.toContain('memory:write');
-    expect(advertised).toEqual(grantableScopes());
+    // `offline_access` rides along for OpenAI's connector pre-flight, which
+    // checks for it and warns about token expiry when absent. It is not a
+    // Cairn scope: `parseScopes` drops it, so it can never reach a consent
+    // screen or a token — which is exactly what this test is guarding.
+    expect(advertised).toEqual([...grantableScopes(), 'offline_access']);
   });
 });
 

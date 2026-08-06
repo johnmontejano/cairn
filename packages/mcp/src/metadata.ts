@@ -67,7 +67,13 @@ export function authorizationServerMetadata(
     authorization_endpoint: `${issuer}/connect`,
     token_endpoint: `${issuer}/api/oauth/token`,
     registration_endpoint: `${issuer}/api/oauth/register`,
-    scopes_supported: grantableScopes(),
+    // `offline_access` is not a Cairn scope and never appears on a consent
+    // screen or a token — `parseScopes` drops it on arrival. It is advertised
+    // anyway because OpenAI's connector pre-flight looks for it here and warns
+    // that access may lapse at token expiry when it is absent, even though
+    // Cairn's `refresh_token` grant works regardless. Advertising it costs
+    // nothing and removes the one documented obstacle to ChatGPT connecting.
+    scopes_supported: [...grantableScopes(), 'offline_access'],
     response_types_supported: ['code'],
     grant_types_supported: ['authorization_code', 'refresh_token'],
     // OAuth 2.1 removes `plain`, and every MCP client is a public client, so
