@@ -2,6 +2,33 @@
 
 Last updated: 2026-08-06
 
+## Exports got its own page; ChatGPT's OAuth pre-flight unblocked (2026-08-06, night)
+
+Two changes in the working tree, verified locally but not yet committed or
+deployed:
+
+- **`/exports` ("Your copies").** Download-as-Markdown, encrypted backup,
+  backup history, and restore moved out of Settings into their own page, with
+  a real empty state (the export button is withheld at zero memories, with a
+  link to /welcome, instead of serving an empty zip). Settings keeps a pointer
+  card; the shell footer gained "Take a copy" — the one always-visible route
+  in. `loadExports` in `views.ts` is a purpose-built read (the old path would
+  have decrypted up to 200 memory items to build an identity summary the page
+  never shows). `recovery.spec.ts` re-pointed at /exports; both journey-spec
+  route lists include it.
+- **`offline_access` advertised** in authorization-server metadata, AS
+  document only — see NEXT_STEPS 0ab, now struck through.
+- **`scripts/capture-routes.mjs`**: signs in through the real form, captures
+  every route at 1440/1024/390, and fails on page-level horizontal overflow,
+  with the measurement caveats written down (label-sized targets, WCAG inline
+  exception, and the dev-only `<nextjs-portal>` element that fakes a 73px
+  overflow). `design-review/` holds the output and is untracked scratch.
+
+Also confirmed from the production database while diagnosing "my account has
+no memories": 332 memory items exist, 274 `proposed` and 0 approved — the
+account isn't empty, it's unreviewed. The Codex MCP client completed a real
+OAuth flow on 2026-08-06.
+
 ## Gmail filtering flipped from deny-list to allow-list (2026-08-06, later)
 
 Shipped as `a3afdb1`. The deny-list filter from earlier the same day (bulk
