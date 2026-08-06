@@ -2,120 +2,120 @@
 name: Cairn
 description: One private memory, shared by the AI tools you choose — a cool working-tool ground with one indigo voice.
 colors:
-  paper: "#f4f6f8"
-  surface: "#ffffff"
-  surface-sunken: "#e9edf0"
-  surface-raised: "#ffffff"
-  ink: "#14181c"
-  ink-muted: "#4b5560"
-  ink-subtle: "#5f6a75"
-  accent: "#3454d1"
-  accent-hover: "#2a44ad"
-  accent-soft: "#e7ecfb"
-  accent-ink: "#24399e"
-  good: "#1f6b45"
-  good-soft: "#e3f1ea"
-  warn: "#7a5410"
-  warn-soft: "#f8eed6"
-  danger: "#a02222"
-  danger-soft: "#fae7e7"
-  info: "#245b7d"
-  info-soft: "#e2eef5"
-  border: "#d7dee4"
-  border-strong: "#b9c3cc"
-  focus: "#2a44ad"
-  night-paper: "#10141a"
-  night-accent: "#7c97f0"
+  paper: '#f4f6f8'
+  surface: '#ffffff'
+  surface-sunken: '#e9edf0'
+  surface-raised: '#ffffff'
+  ink: '#14181c'
+  ink-muted: '#4b5560'
+  ink-subtle: '#5f6a75'
+  accent: '#3454d1'
+  accent-hover: '#2a44ad'
+  accent-soft: '#e7ecfb'
+  accent-ink: '#24399e'
+  good: '#1f6b45'
+  good-soft: '#e3f1ea'
+  warn: '#7a5410'
+  warn-soft: '#f8eed6'
+  danger: '#a02222'
+  danger-soft: '#fae7e7'
+  info: '#245b7d'
+  info-soft: '#e2eef5'
+  border: '#d7dee4'
+  border-strong: '#b9c3cc'
+  focus: '#2a44ad'
+  night-paper: '#10141a'
+  night-accent: '#7c97f0'
 typography:
   display:
     fontFamily: "Spectral, ui-serif, Georgia, Cambria, 'Times New Roman', serif"
-    fontSize: "clamp(2.5rem, 1.35rem + 4.2vw, 4.25rem)"
+    fontSize: 'clamp(2.5rem, 1.35rem + 4.2vw, 4.25rem)'
     fontWeight: 600
     lineHeight: 1.04
-    letterSpacing: "-0.022em"
+    letterSpacing: '-0.022em'
   headline:
     fontFamily: "ui-serif, Georgia, Cambria, 'Times New Roman', serif"
-    fontSize: "2rem"
+    fontSize: '2rem'
     fontWeight: 650
     lineHeight: 1.25
-    letterSpacing: "-0.01em"
+    letterSpacing: '-0.01em'
   title:
     fontFamily: "ui-serif, Georgia, Cambria, 'Times New Roman', serif"
-    fontSize: "1.5rem"
+    fontSize: '1.5rem'
     fontWeight: 600
     lineHeight: 1.25
-    letterSpacing: "-0.01em"
+    letterSpacing: '-0.01em'
   body:
     fontFamily: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
-    fontSize: "1rem"
+    fontSize: '1rem'
     fontWeight: 400
     lineHeight: 1.6
   label:
     fontFamily: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
-    fontSize: "0.8125rem"
+    fontSize: '0.8125rem'
     fontWeight: 550
     lineHeight: 1.4
 rounded:
-  sm: "6px"
-  md: "10px"
-  lg: "16px"
-  pill: "999px"
+  sm: '6px'
+  md: '10px'
+  lg: '16px'
+  pill: '999px'
 spacing:
-  xs: "0.5rem"
-  sm: "0.75rem"
-  md: "1rem"
-  lg: "1.25rem"
-  xl: "2rem"
+  xs: '0.5rem'
+  sm: '0.75rem'
+  md: '1rem'
+  lg: '1.25rem'
+  xl: '2rem'
 components:
   button-primary:
-    backgroundColor: "{colors.accent}"
-    textColor: "#ffffff"
-    rounded: "{rounded.md}"
-    padding: "0.625rem 1.125rem"
-    height: "44px"
+    backgroundColor: '{colors.accent}'
+    textColor: '#ffffff'
+    rounded: '{rounded.md}'
+    padding: '0.625rem 1.125rem'
+    height: '44px'
   button-primary-hover:
-    backgroundColor: "{colors.accent-hover}"
+    backgroundColor: '{colors.accent-hover}'
   button-secondary:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.md}"
-    padding: "0.625rem 1.125rem"
-    height: "44px"
+    backgroundColor: '{colors.surface}'
+    textColor: '{colors.ink}'
+    rounded: '{rounded.md}'
+    padding: '0.625rem 1.125rem'
+    height: '44px'
   button-secondary-hover:
-    backgroundColor: "{colors.surface-sunken}"
+    backgroundColor: '{colors.surface-sunken}'
   button-quiet:
-    backgroundColor: "transparent"
-    textColor: "{colors.ink-muted}"
-    rounded: "{rounded.md}"
-    padding: "0.625rem 0.75rem"
-    height: "44px"
+    backgroundColor: 'transparent'
+    textColor: '{colors.ink-muted}'
+    rounded: '{rounded.md}'
+    padding: '0.625rem 0.75rem'
+    height: '44px'
   button-danger:
-    backgroundColor: "transparent"
-    textColor: "{colors.danger}"
-    rounded: "{rounded.md}"
-    padding: "0.625rem 1.125rem"
-    height: "44px"
+    backgroundColor: 'transparent'
+    textColor: '{colors.danger}'
+    rounded: '{rounded.md}'
+    padding: '0.625rem 1.125rem'
+    height: '44px'
   card:
-    backgroundColor: "{colors.surface}"
-    rounded: "{rounded.md}"
-    padding: "1.25rem 1.375rem"
+    backgroundColor: '{colors.surface}'
+    rounded: '{rounded.md}'
+    padding: '1.25rem 1.375rem'
   input:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.md}"
-    padding: "0.625rem 0.75rem"
-    height: "44px"
+    backgroundColor: '{colors.surface}'
+    textColor: '{colors.ink}'
+    rounded: '{rounded.md}'
+    padding: '0.625rem 0.75rem'
+    height: '44px'
   badge-neutral:
-    backgroundColor: "{colors.surface-sunken}"
-    textColor: "{colors.ink-muted}"
-    rounded: "{rounded.sm}"
-    padding: "0.1875rem 0.5rem"
+    backgroundColor: '{colors.surface-sunken}'
+    textColor: '{colors.ink-muted}'
+    rounded: '{rounded.sm}'
+    padding: '0.1875rem 0.5rem'
   nav-link:
-    backgroundColor: "transparent"
-    textColor: "{colors.ink-muted}"
-    rounded: "{rounded.pill}"
-    padding: "0.5rem 0.875rem"
-    height: "44px"
+    backgroundColor: 'transparent'
+    textColor: '{colors.ink-muted}'
+    rounded: '{rounded.pill}'
+    padding: '0.5rem 0.875rem'
+    height: '44px'
 ---
 
 # Design System: Cairn
@@ -131,6 +131,7 @@ The system lives in two registers. **The app past sign-in stays quiet**: it foll
 Everything is built defensively: content is complete without JavaScript, motion is gated behind `prefers-reduced-motion`, heavy libraries (GSAP, three.js) are dynamically imported only where used, and every enhancement has a static fallback already on screen before it loads.
 
 **Key Characteristics:**
+
 - Cool blue-grey ground, single indigo accent, four status hues used only for status
 - Every foreground/background pair meets WCAG 2.2 AA in both themes — checked, not assumed
 - Serif headings over system-sans body; Spectral display face on the landing only
@@ -143,18 +144,22 @@ Everything is built defensively: content is complete without JavaScript, motion 
 A cool working-tool ground with one indigo voice; the light theme is the normative token set, and a mirrored dark set (near-black blue papers, tinted accent) lives in the same file.
 
 ### Primary
+
 - **Indigo** (#3454d1): the single accent. Primary buttons, active states, the pulsing progress dot, citation markers, and the landing's rim light and glow washes. In dark contexts it lightens to **Night Indigo** (#7c97f0) because saturated indigo goes muddy on a dark ground. `accent-ink` (#24399e) is the text-safe variant (9.0:1); `accent-soft` (#e7ecfb) is the tint for selected/hovered surfaces and step markers.
 
 ### Neutral
+
 - **Cool Paper** (#f4f6f8): the page ground. Dark counterpart **Night Paper** (#10141a).
 - **Surface** (#ffffff) / **Surface Sunken** (#e9edf0) / **Surface Raised** (#ffffff): cards, wells, and floating panels. Depth is mostly tonal — sunken wells for code, nav tracks, and evidence blocks.
 - **Ink** (#14181c, 16.5:1) / **Ink Muted** (#4b5560, 7.0:1) / **Ink Subtle** (#5f6a75, 5.1:1): a three-step text hierarchy — content, supporting copy, metadata.
 - **Border** (#d7dee4) / **Border Strong** (#b9c3cc): hairlines everywhere; strong for interactive edges (inputs, secondary buttons) and the excerpt rule.
 
 ### Status
+
 - **Good** (#1f6b45), **Warn** (#7a5410), **Danger** (#a02222), **Info** (#245b7d), each with a `-soft` tint for badge and callout grounds. Status hues appear only in badges, callouts, and validation — never as decoration.
 
 ### Named Rules
+
 **The AA Ledger Rule.** Every foreground/background pair meets WCAG 2.2 AA in both themes, and the contrast ratios are recorded as comments next to the tokens. Do not introduce a colour without checking it in both themes.
 
 **The One Voice Rule.** Indigo is the only accent. If something needs emphasis and it isn't a status, it gets indigo or it gets typography — never a second hue.
@@ -171,6 +176,7 @@ A cool working-tool ground with one indigo voice; the light theme is the normati
 **Character:** Serif headings give the reading-your-own-words product a bookish steadiness; the system sans body keeps it a tool, not a magazine. On the landing, Spectral's chiseled, flared terminals read as letters cut into stone — the one face on the page with a point of view. Italic + indigo `em` is the emphasis idiom in display lines.
 
 ### Hierarchy
+
 - **Display** (600, clamp(2.5rem → 4.25rem), 1.04, −0.022em): the landing h1 and the big serif close. Balanced wrapping (`text-wrap: balance`). Tightens to clamp(2.25rem → 3.55rem) on short desktops.
 - **Landing section title** (600, clamp(1.75rem → 2.5rem), 1.15, −0.015em): display face, one per landing section.
 - **Headline** (650, 2rem, serif): app page titles (`.cairn-page-title`).
@@ -179,6 +185,7 @@ A cool working-tool ground with one indigo voice; the light theme is the normati
 - **Label** (550, 0.8125rem): badges, metadata, hints, eyebrows. The in-between weights (550/650) are deliberate — variable system fonts render them; keep them.
 
 ### Named Rules
+
 **The Two-Register Rule.** Spectral exists only inside `.cairn-landing` (scoped via `--cairn-font-display-face`, self-hosted by next/font). The app past sign-in never inherits the display face; its serif is always the system stack.
 
 **The Measure Rule.** Body copy is always width-limited: 60ch ledes, 52ch trail bodies, 46ch empty-state copy. No full-width paragraphs.
@@ -199,12 +206,14 @@ A cool working-tool ground with one indigo voice; the light theme is the normati
 Hairlines first, shadows second. Structure is carried by 1px borders and tonal layering (sunken wells, raised panels); shadows are small, ambient, and reserved for things that genuinely float. The landing adds two pure-CSS radial indigo washes (`color-mix` of accent into transparent, ≤17%) — behind the fold and beneath the close — as atmosphere, not elevation.
 
 ### Shadow Vocabulary
+
 - **Whisper** (`0 1px 2px rgb(20 24 28 / 0.06)`, `--cairn-shadow-sm`): resting cards, the active nav pill, eyebrows.
 - **Lift** (`0 2px 8px rgb(20 24 28 / 0.08)`, `--cairn-shadow`): the proof demo panel.
 - **Float** (`0 8px 28px rgb(20 24 28 / 0.12)`, `--cairn-shadow-lg`): the hero sign-in card and the floating proof card. Dark theme swaps all three for deeper black-based values.
 - **Glass** (landing header only): once scrolled, `backdrop-filter: blur(14px)` over paper at 82% opacity with a hairline bottom border — legibility over the canvas, not decoration.
 
 ### Named Rules
+
 **The Hairline-First Rule.** If a border can do the job, no shadow. Callouts use a full 1px border in the status hue rather than a thick accent bar — the tinted background already carries the tone; don't say it twice.
 
 ## Shapes
@@ -214,7 +223,9 @@ Soft, workmanlike corners on a three-step radius: 6px (badges, code chips, focus
 ## Components
 
 ### Buttons
+
 Confident but quiet; colour changes on hover, not movement.
+
 - **Shape:** gently rounded (10px), min 44×44px, weight 550, 120ms background/border/colour ease.
 - **Primary:** indigo fill (#3454d1), white text; dark contexts flip to light-indigo fill with near-black text. Hover deepens to accent-hover.
 - **Secondary:** surface fill, strong hairline border; hover sinks to surface-sunken.
@@ -224,36 +235,45 @@ Confident but quiet; colour changes on hover, not movement.
 - **Disabled:** opacity 0.55, not-allowed cursor.
 
 ### Badges
+
 - **Style:** soft-tinted ground with the matching deep hue as text (e.g. good-soft/good), 6px radius, 0.8125rem at weight 550. Tones: neutral, good, warn, danger, info, accent.
 
 ### Cards / Containers
+
 - **Corner Style:** 10px; feature panels and choice cards 16px.
 - **Background:** surface on paper, 1px hairline border, whisper shadow, 1.25rem × 1.375rem padding.
 - **Card title:** serif, 1.125rem, 600.
 - **Choice cards:** hover swaps to indigo border + accent-soft ground; the `--accent` variant holds that state permanently for the one recommended choice.
 
 ### Inputs / Fields
+
 - **Style:** surface ground, strong hairline border, 10px radius, 44px min-height; label 550, hint and error at 0.9375rem (error in danger at 550).
 - **Focus:** the global ring — 3px solid `--cairn-focus`, 2px offset. Never removed, only restyled.
 - **Invalid:** `aria-invalid` doubles the border to 2px danger.
 - **Textarea:** 9rem min, vertical resize only.
 
 ### Navigation
+
 - **App:** links sit in one pill-shaped sunken track; each link is its own pill (44px, weight 550). Hover changes colour only — moving the pill would make the row twitch. Current page: surface pill, accent-ink text, whisper shadow.
 - **Landing:** transparent header over the night hero that regains glass on scroll (`.is-scrolled`); text links are quiet pills (hidden ≤40rem), the sign-in CTA an outlined indigo pill that fills accent-soft on hover.
 - **Shell status:** a standing pill with the pulsing indigo dot (`cairn-pulse`, 1.6s opacity ease) whenever jobs are running.
 
 ### The Trail (landing signature)
+
 Numbered stops on a hairline rail — a walked path, not a card grid. 3rem circular markers in accent-soft with a 40%-transparent indigo ring and display-face numerals; a 1px gradient rail joins stop to stop and fades before the last. The `--pair` variant puts two stops side by side with no rail.
 
 ### The Proof Demo (landing signature)
+
 The product's argument, enacted: an italic display-face question, a sans answer with superscript indigo citation markers, and a sunken evidence block quoting the exact source sentence. Hovering a citation lights the receipt (accent-soft ground, indigo hairline, 200ms). Demonstration content always wears the pill-shaped **Example** tag. The same citation idiom (`.cairn-citation-marker`) exists in the app's answers.
 
 ### The Stone Scene (landing signature)
+
 Five ellipsoid stones (three.js) scrub from adrift to a balanced cairn with scroll — forwards and backwards with the person, never on its own schedule. Colours are read live from the `--cairn-*` tokens on the scene's own container (so the committed-dark scope answers, not the root), using only tokens that survive both grounds: ink-subtle, border-strong, accent (the one indigo stone), ink-muted. Indigo rim light from below-left, ~90 slow-rising indigo dust motes, a soft blob shadow that darkens as the stack lands, and pointer parallax on fine pointers only (eased at 0.06/frame — weight, not tracking). Renders only while visible; pixel ratio clamped to 1.75; everything disposed on unmount. Assembly completes: wide viewports key progress to the top of the page (done in ~0.35 viewport); narrow viewports key it to the canvas's own arrival so phones still see the story.
 
 ### Motion grammar (landing)
+
 One grammar, owned in one place (`landing-motion.tsx`):
+
 - **Hero rise:** `[data-hero-rise]` elements rise once on arrival — opacity 0→1, y 30, blur(6px)→0, 0.9s power3.out, 0.09s stagger.
 - **Reveal rise:** every `[data-reveal]` rises the same way as it enters (y 26, blur 5px, 0.8s, trigger at top 88%). One entrance for the whole page, not a different one per section.
 - **Header glass:** toggled at 24px of scroll.
@@ -263,6 +283,7 @@ One grammar, owned in one place (`landing-motion.tsx`):
 ## Do's and Don'ts
 
 ### Do:
+
 - **Do** check every new foreground/background pair against WCAG 2.2 AA in both themes before it lands, and record the ratio beside the token (the AA Ledger Rule).
 - **Do** give every interactive control 44px minimum in both dimensions (`--cairn-target`) and the global 3px focus ring.
 - **Do** keep the fallback ladder: static SVG rendered on the server, canvas/motion swapped in-place in the same grid cell only after `prefers-reduced-motion` and capability checks pass, no visible error state on failure.
@@ -271,6 +292,7 @@ One grammar, owned in one place (`landing-motion.tsx`):
 - **Do** scope any new landing-only ambition (faces, committed colours, washes) under `.cairn-landing`.
 
 ### Don't:
+
 - **Don't** introduce a second accent hue, or use status colours decoratively.
 - **Don't** let the app past sign-in commit to a theme, load Spectral, or grow scroll choreography — it follows the person's preference and stays quiet.
 - **Don't** move elements on hover in the app nav or button rows; hover is colour-only there. (Landing CTAs may lift 1px — that is the landing's licence, not the app's.)

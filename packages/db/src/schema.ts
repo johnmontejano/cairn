@@ -423,6 +423,8 @@ export const mcpClients = pgTable('mcp_clients', {
   name: text('name').notNull(),
   scopes: text('scopes').array().notNull(),
   projectIds: uuid('project_ids').array(),
+  /** Which memory types this client may read. Null means every type. */
+  memoryTypes: text('memory_types').array(),
   maxSensitivity: text('max_sensitivity').notNull().default('normal'),
   tokenHash: text('token_hash'),
   subject: text('subject'),

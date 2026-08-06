@@ -1,5 +1,6 @@
 import { Badge, Callout, Card, Disclosure, EmptyState, LinkButton } from '@cairn/ui';
 import { MCP_PROTOCOL_REVISION, PRODUCT } from '@cairn/config';
+import { CANONICAL_DOCS, memoryTypes } from '@cairn/domain';
 import { AppShell } from '@/components/chrome';
 import { ActionForm, CopyableCode, SubmitButton } from '@/components/forms';
 import { createConnectedAi, revokeConnectedAi } from '@/server/actions';
@@ -30,15 +31,34 @@ export const dynamic = 'force-dynamic';
  * yet costs someone a wasted attempt and the belief that they broke it; naming
  * it plainly costs nothing and is true.
  */
-function mcpClients(
-  signInMode: boolean,
-  mcpUrl: string,
-): ReadonlyArray<{
+interface McpClientCard {
   name: string;
+  /** One sentence saying literally where the copied thing goes. */
   how: string;
   supported: boolean;
   copy?: { value: string; label: string };
-}> {
+  /** One line of small print under the thing to copy. */
+  note?: string;
+  /**
+   * Folded-away second routes.
+   *
+   * The important one is the prompt you hand the tool itself. For Claude Code
+   * and Codex the setup *is* a command, and those two can run a command — so
+   * the shortest honest instruction is not "open a terminal and type this", it
+   * is "tell it to do this". Every such prompt stops at the sign-in and hands
+   * that part back, because an agent must never be the thing holding your
+   * password. Tools where setup is a menu toggle get no prompt: an agent
+   * cannot click a menu in someone else's app, and pretending otherwise sends
+   * people down a dead end.
+   */
+  extras?: ReadonlyArray<{
+    summary: string;
+    body: string;
+    copy?: { value: string; label: string };
+  }>;
+}
+
+function mcpClients(signInMode: boolean, mcpUrl: string): ReadonlyArray<McpClientCard> {
   if (!signInMode) {
     return [
       {
@@ -68,27 +88,78 @@ function mcpClients(
       },
     ];
   }
+  // Claude Code and Codex first: they are the pair most people want talking to
+  // each other, and they are the two that can do their own setup.
   return [
     {
-      name: 'Claude',
-      how: 'In Claude, open Settings → Connectors → Add custom connector and paste this address. Claude brings you back here, and you say yes once.',
-      supported: true,
-      copy: { value: mcpUrl, label: 'Copy address' },
-    },
-    {
       name: 'Claude Code',
-      how: 'Run this in your terminal. Your browser opens so you can approve it here.',
+      how: 'Paste this into your terminal. Your browser opens so you can say yes here.',
       supported: true,
       copy: {
-        value: `claude mcp add --transport http ${PRODUCT.slug} ${mcpUrl}`,
+        value: `claude mcp add --transport http ${PRODUCT.slug} --scope user ${mcpUrl}`,
         label: 'Copy command',
       },
+      note: 'Then start Claude Code and type /mcp to finish signing in. Added this way, Cairn is there in every project on this computer.',
+      extras: [
+        {
+          summary: 'Or ask Claude Code to set it up',
+          body: 'Paste this into a Claude Code session and it does the setup itself. It stops at the sign-in and hands that part back to you.',
+          copy: {
+            value: `Set up my ${PRODUCT.name} memory in Claude Code. Run: claude mcp add --transport http ${PRODUCT.slug} --scope user ${mcpUrl} — then run claude mcp list, show me what it says, and tell me to type /mcp so I can sign in myself. Never ask me for a password, a token or a key.`,
+            label: 'Copy prompt',
+          },
+        },
+      ],
     },
     {
-      name: 'ChatGPT',
-      how: 'In ChatGPT, open Settings → Apps → Create, paste this address, and pick sign-in when it asks how to connect.',
+      name: 'Codex',
+      how: 'Paste this into your terminal. Codex opens your browser so you can say yes here.',
+      supported: true,
+      copy: {
+        value: `codex mcp add ${PRODUCT.slug} --url ${mcpUrl}`,
+        label: 'Copy command',
+      },
+      note: 'Then quit and reopen Codex, and type /mcp to check. If the command does nothing, update Codex first — signing in needs version 0.77 or newer.',
+      extras: [
+        {
+          summary: 'Or ask Codex to set it up',
+          body: 'Paste this into a Codex session and it does the setup itself. It stops at the sign-in and hands that part back to you.',
+          copy: {
+            value: `Set up my ${PRODUCT.name} memory in Codex. Run: codex mcp add ${PRODUCT.slug} --url ${mcpUrl} — a browser will open and I will sign in myself. Then run codex mcp list and show me what it says. Never ask me for a password, a token or a key.`,
+            label: 'Copy prompt',
+          },
+        },
+        {
+          summary: 'If you use the Codex editor extension or the ChatGPT desktop app',
+          body: `Same thing through the menus: open MCP servers in settings, add a server called ${PRODUCT.slug}, choose Streamable HTTP, and paste this address. Save, restart, then choose Authenticate next to ${PRODUCT.slug}. The terminal, the editor extension and the desktop app share one set of settings, so doing it in any one of them covers all three.`,
+          copy: { value: mcpUrl, label: 'Copy address' },
+        },
+      ],
+    },
+    {
+      name: 'Claude',
+      how: 'In Claude, open Connectors in your settings, choose to add a custom connector, and paste this address.',
       supported: true,
       copy: { value: mcpUrl, label: 'Copy address' },
+      note: 'Connectors sits under Customize in newer versions and under Settings in older ones. Claude brings you back here, and you say yes once.',
+      extras: [
+        {
+          summary: 'If you are on a Team or Enterprise plan',
+          body: 'Only an owner can add it, and they only do it once. After that everyone else opens the same Connectors screen and chooses Connect, signing in with their own Cairn account.',
+        },
+      ],
+    },
+    {
+      name: 'ChatGPT in your browser',
+      how: 'Not dependable yet here — it needs a Business or Enterprise workspace with developer mode switched on first. Use the ChatGPT desktop app instead: set up Codex above and the desktop app picks it up.',
+      supported: false,
+      extras: [
+        {
+          summary: 'If you do have a Business or Enterprise workspace',
+          body: 'An admin turns on developer mode for the workspace, then you open Apps in your settings, choose Create, paste this address, and pick sign-in when it asks how to connect. Two things to expect: it may only be able to look things up, and you may have to sign in again after a while.',
+          copy: { value: mcpUrl, label: 'Copy address' },
+        },
+      ],
     },
     {
       name: 'Cursor',
@@ -166,7 +237,7 @@ export default async function ConnectionsPage() {
         </h2>
         <p style={{ color: 'var(--cairn-ink-muted)', marginTop: 0 }}>
           {signInMode
-            ? 'Pick the tool you use. Its card has the exact thing to copy and says where to paste it.'
+            ? 'Connect more than one and they all read the same memory, so what you tell one, the others already know. Each card below has the one thing to copy and says where it goes.'
             : 'Every tool below uses the same connection code, made in the section further down. What differs is where you put it.'}
         </p>
         <div className="cairn-grid">
@@ -194,6 +265,24 @@ export default async function ConnectionsPage() {
                   </LinkButton>
                 </div>
               ) : null}
+              {client.note ? (
+                <p className="cairn-meta" style={{ margin: '0.5rem 0 0' }}>
+                  {client.note}
+                </p>
+              ) : null}
+              {/* Folded away on purpose. The one command is the whole card for
+                  most people; the person who wants the agent to do it, or who
+                  is in the app rather than the terminal, opens one thing. */}
+              {client.extras?.map((extra) => (
+                <div key={extra.summary} style={{ marginTop: '0.75rem' }}>
+                  <Disclosure summary={extra.summary}>
+                    <p style={{ marginTop: 0 }}>{extra.body}</p>
+                    {extra.copy ? (
+                      <CopyableCode value={extra.copy.value} label={extra.copy.label} />
+                    ) : null}
+                  </Disclosure>
+                </div>
+              ))}
             </Card>
           ))}
         </div>
@@ -248,6 +337,16 @@ export default async function ConnectionsPage() {
                         {client.maxSensitivity === 'normal'
                           ? 'Sensitive memory excluded'
                           : 'Sensitive memory included'}
+                      </div>
+                      {/* Only named when it is actually narrowed. Spelling out
+                          all eight types for every unrestricted connection
+                          would bury the one that is restricted. */}
+                      <div className="cairn-meta">
+                        {client.memoryTypes === null
+                          ? 'Every kind of memory'
+                          : `Only ${client.memoryTypes
+                              .map((type) => CANONICAL_DOCS[type].title.toLowerCase())
+                              .join(', ')}`}
                       </div>
                     </td>
                     <td>{shortDate(client.createdAt)}</td>
@@ -341,6 +440,7 @@ export default async function ConnectionsPage() {
                 Include memory you marked sensitive
               </label>
             </fieldset>
+            <MemoryTypeScope />
             <div>
               <SubmitButton busyLabel="Creating…">Create a connection code</SubmitButton>
             </div>
@@ -423,5 +523,43 @@ export default async function ConnectionsPage() {
         </Card>
       </section>
     </AppShell>
+  );
+}
+
+/**
+ * Which kinds of memory a connection may read.
+ *
+ * The axis people actually reason about when connecting a work tool to a memory
+ * that also holds personal context. Sensitivity does not answer it — a coding
+ * assistant has good reason to read how you like things done and no reason at
+ * all to read who your family is, and neither of those is sensitive.
+ *
+ * Every box starts ticked, so the default is unchanged from before this existed
+ * and narrowing is a deliberate act. All-ticked is stored as "everything"
+ * rather than as a list of today's eight types, so a connection nobody narrowed
+ * keeps up with types added later — see `readMemoryTypes` in the server action.
+ *
+ * The labels are the same ones `/home` groups saved memory under. Nothing new
+ * to learn: whatever "Decisions" means on the page where you read them is what
+ * it means here where you share them.
+ */
+function MemoryTypeScope() {
+  return (
+    <fieldset className="cairn-fieldset">
+      <legend>What it is allowed to read</legend>
+      <p className="cairn-field__hint">
+        Untick anything this tool has no business seeing. You can create a second connection with a
+        different selection for a different tool.
+      </p>
+      {/* Tells the server the choice was offered at all, so a form that never
+          showed these boxes still means "everything" rather than "nothing". */}
+      <input type="hidden" name="memoryTypesOffered" value="1" />
+      {memoryTypes.map((type) => (
+        <label className="cairn-choice" key={type}>
+          <input type="checkbox" name="memoryTypes" value={type} defaultChecked />
+          {CANONICAL_DOCS[type].title}
+        </label>
+      ))}
+    </fieldset>
   );
 }

@@ -29,6 +29,7 @@ function client(overrides: Partial<NonNullable<ActorContext['client']>> = {}): A
       name: 'Test client',
       scopes: ['memory:read'],
       projectIds: null,
+      memoryTypes: null,
       maxSensitivity: 'normal',
       ...overrides,
     },
@@ -37,6 +38,7 @@ function client(overrides: Partial<NonNullable<ActorContext['client']>> = {}): A
 
 const approvedNormal = {
   status: 'approved' as const,
+  type: 'fact' as const,
   sensitivity: 'normal' as const,
   visibility: 'share_with_authorized_clients' as const,
   projectId: 'p1',
@@ -254,5 +256,55 @@ describe('canonical Markdown', () => {
   it('gives every memory type its own file', () => {
     const paths = Object.values(CANONICAL_DOCS).map((d) => d.path);
     expect(new Set(paths).size).toBe(paths.length);
+  });
+});
+
+describe('per-type grants', () => {
+  const approvedNormal = {
+    status: 'approved' as const,
+    type: 'fact' as const,
+    sensitivity: 'normal' as const,
+    visibility: 'share_with_authorized_clients' as const,
+    projectId: 'p1',
+  };
+
+  it('withholds a type the connection was not granted', () => {
+    // The scope a person reasons about when connecting a coding assistant to a
+    // memory that also holds personal context: not how secret something is,
+    // but what it is about.
+    const codingAssistant = client({ memoryTypes: ['operating_rule', 'preference'] });
+    expect(disclosureBlockReason(codingAssistant, approvedNormal)).toBe('type_not_granted:fact');
+    expect(
+      canDisclose(codingAssistant, { ...approvedNormal, type: 'operating_rule' as const }),
+    ).toBe(true);
+    expect(disclosureBlockReason(codingAssistant, { ...approvedNormal, type: 'person_org' })).toBe(
+      'type_not_granted:person_org',
+    );
+  });
+
+  it('treats null as every type, so an unnarrowed connection is unaffected', () => {
+    expect(canDisclose(client({ memoryTypes: null }), approvedNormal)).toBe(true);
+    expect(
+      canDisclose(client({ memoryTypes: null }), { ...approvedNormal, type: 'person_org' }),
+    ).toBe(true);
+  });
+
+  it('does not let a type grant override any other rule', () => {
+    // Granting a type must widen nothing else: status, visibility, sensitivity
+    // and project all still apply.
+    const wide = client({ memoryTypes: ['fact'], projectIds: ['p2'] });
+    expect(disclosureBlockReason(wide, approvedNormal)).toBe('project_not_granted');
+    expect(
+      disclosureBlockReason(client({ memoryTypes: ['fact'] }), {
+        ...approvedNormal,
+        visibility: 'never_share' as const,
+      }),
+    ).toBe('visibility:never_share');
+    expect(
+      disclosureBlockReason(client({ memoryTypes: ['fact'] }), {
+        ...approvedNormal,
+        sensitivity: 'sensitive' as const,
+      }),
+    ).toBe('sensitivity:sensitive');
   });
 });

@@ -54,6 +54,7 @@ export const RETRIEVABLE_STATUSES: readonly MemoryStatus[] = ['approved'];
 
 export interface DisclosureSubject {
   status: MemoryStatus;
+  type: MemoryType;
   sensitivity: SensitivityLevel;
   visibility: ClientVisibilityPolicy;
   projectId: string;
@@ -85,6 +86,9 @@ export function disclosureBlockReason(actor: ActorContext, item: DisclosureSubje
   }
   if (actor.client.projectIds && !actor.client.projectIds.includes(item.projectId)) {
     return 'project_not_granted';
+  }
+  if (actor.client.memoryTypes && !actor.client.memoryTypes.includes(item.type)) {
+    return `type_not_granted:${item.type}`;
   }
   return null;
 }

@@ -46,6 +46,14 @@ export interface ClientPrincipal {
   scopes: McpScope[];
   /** `null` means every project in the workspace. */
   projectIds: Uuid[] | null;
+  /**
+   * Which kinds of memory this client may read. `null` means every type.
+   *
+   * The axis people reason about when they connect a work tool to a memory
+   * that also holds personal context: not how sensitive something is, but what
+   * it is about.
+   */
+  memoryTypes: MemoryType[] | null;
   maxSensitivity: SensitivityLevel;
 }
 
@@ -478,6 +486,8 @@ export interface McpClient {
   name: string;
   scopes: McpScope[];
   projectIds: Uuid[] | null;
+  /** Only these memory types are ever returned to this client. Null means all. */
+  memoryTypes: MemoryType[] | null;
   /** Only sensitivity levels at or below this are ever returned to this client. */
   maxSensitivity: SensitivityLevel;
   tokenHash: string | null;

@@ -42,6 +42,7 @@ interface Candidate {
   id: Uuid;
   projectId: Uuid;
   status: string;
+  type: MemoryType;
   sensitivity: SensitivityLevel;
   visibility: string;
   semanticRank?: number;
@@ -72,12 +73,13 @@ export async function searchMemory(
     id: string;
     project_id: string;
     status: string;
+    type: MemoryType;
     sensitivity: SensitivityLevel;
     visibility: string;
     score: number;
   }>(
     await deps.tx.execute(sql`
-      SELECT m.id, m.project_id, m.status, m.sensitivity, m.visibility,
+      SELECT m.id, m.project_id, m.status, m.type, m.sensitivity, m.visibility,
              1 - (e.embedding <=> ${vectorLiteral}::vector) AS score
       FROM memory_item_embeddings e
       JOIN memory_items m ON m.id = e.memory_item_id
@@ -86,6 +88,7 @@ export async function searchMemory(
         AND m.deleted_at IS NULL
         ${options.projectId ? sql`AND m.project_id = ${options.projectId}` : sql``}
         ${projectGrantClause(actor)}
+        ${memoryTypeClause(actor)}
         ${sensitivityClause(actor)}
         ${visibilityClause(actor)}
       ORDER BY e.embedding <=> ${vectorLiteral}::vector
@@ -97,6 +100,7 @@ export async function searchMemory(
       id: row.id,
       projectId: row.project_id,
       status: row.status,
+      type: row.type,
       sensitivity: row.sensitivity,
       visibility: row.visibility,
       semanticRank: index + 1,
@@ -112,12 +116,13 @@ export async function searchMemory(
       id: string;
       project_id: string;
       status: string;
+      type: MemoryType;
       sensitivity: SensitivityLevel;
       visibility: string;
       hits: number;
     }>(
       await deps.tx.execute(sql`
-        SELECT m.id, m.project_id, m.status, m.sensitivity, m.visibility,
+        SELECT m.id, m.project_id, m.status, m.type, m.sensitivity, m.visibility,
                count(*)::int AS hits
         FROM memory_blind_terms b
         JOIN memory_items m ON m.id = b.memory_item_id
@@ -130,9 +135,10 @@ export async function searchMemory(
           AND m.deleted_at IS NULL
           ${options.projectId ? sql`AND m.project_id = ${options.projectId}` : sql``}
           ${projectGrantClause(actor)}
+          ${memoryTypeClause(actor)}
           ${sensitivityClause(actor)}
           ${visibilityClause(actor)}
-        GROUP BY m.id, m.project_id, m.status, m.sensitivity, m.visibility
+        GROUP BY m.id, m.project_id, m.status, m.type, m.sensitivity, m.visibility
         ORDER BY hits DESC
         LIMIT ${poolSize}
       `),
@@ -147,6 +153,7 @@ export async function searchMemory(
           id: row.id,
           projectId: row.project_id,
           status: row.status,
+          type: row.type,
           sensitivity: row.sensitivity,
           visibility: row.visibility,
           exactRank: index + 1,
@@ -164,6 +171,7 @@ export async function searchMemory(
       (c) =>
         disclosureBlockReason(actor, {
           status: c.status as never,
+          type: c.type,
           sensitivity: c.sensitivity,
           visibility: c.visibility as never,
           projectId: c.projectId,
@@ -284,6 +292,19 @@ function projectGrantClause(actor: ActorContext) {
   )})`;
 }
 
+/**
+ * The per-type grant, applied in SQL before anything is decrypted — the same
+ * rule `disclosureBlockReason` applies to a single item, expressed once here so
+ * a scoped client's excluded types never even become candidates for ranking.
+ */
+function memoryTypeClause(actor: ActorContext) {
+  if (!actor.client?.memoryTypes || actor.client.memoryTypes.length === 0) return sql``;
+  return sql`AND m.type IN (${sql.join(
+    actor.client.memoryTypes.map((t) => sql`${t}`),
+    sql`, `,
+  )})`;
+}
+
 /** Single-item read that applies exactly the same disclosure gate. */
 export async function getDisclosableMemoryItem(
   deps: Omit<SearchDeps, 'embedder'>,
@@ -305,6 +326,7 @@ export async function getDisclosableMemoryItem(
   if (
     disclosureBlockReason(actor, {
       status: row.status as never,
+      type: row.type as MemoryType,
       sensitivity: row.sensitivity as SensitivityLevel,
       visibility: row.visibility as never,
       projectId: row.projectId,

@@ -13,7 +13,7 @@ documenter passes:
 - **Full-viewport hero**: eyebrow → single h1 → lede → sign-in card → note,
   stones adrift to the right with the proof card at their foot, and a quiet
   scroll cue. A `(min-width: 62rem) and (max-height: 60rem)` block keeps the
-  Continue button *and* the cue above the fold on a 900px laptop — note the
+  Continue button _and_ the cue above the fold on a 900px laptop — note the
   cascade trap: that block must sit **after** the base hero rules in
   `globals.css`, same specificity, order decides.
 - **Spectral** (500/600 + italics) is the landing-only display face, loaded

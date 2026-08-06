@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Callout, Card } from '@cairn/ui';
 import { withTenant } from '@cairn/db';
+import { CANONICAL_DOCS, memoryTypes } from '@cairn/domain';
 import { AppShell } from '@/components/chrome';
 import { ActionForm, SubmitButton } from '@/components/forms';
 import { approveAiConnection, denyAiConnection } from '@/server/actions';
@@ -110,7 +111,23 @@ export default async function ConnectPage({
           hidden={{ request: params.toString() }}
           className="cairn-stack cairn-stack--md"
         >
+          {/* The same per-type choice the connection-code form offers. This is
+              the screen where a coding assistant is being pointed at a memory
+              that may also hold personal context, so it is exactly the moment
+              to be able to say "rules and preferences, not people". Every box
+              starts ticked: narrowing is deliberate, never a default. */}
           <fieldset className="cairn-fieldset" style={{ marginTop: '1.25rem' }}>
+            <legend>What it is allowed to read</legend>
+            <p className="cairn-field__hint">Untick anything this tool has no business seeing.</p>
+            <input type="hidden" name="memoryTypesOffered" value="1" />
+            {memoryTypes.map((type) => (
+              <label className="cairn-choice" key={type}>
+                <input type="checkbox" name="memoryTypes" value={type} defaultChecked />
+                {CANONICAL_DOCS[type].title}
+              </label>
+            ))}
+          </fieldset>
+          <fieldset className="cairn-fieldset">
             <legend>Anything else?</legend>
             <label className="cairn-choice">
               <input type="checkbox" name="includeSensitive" />

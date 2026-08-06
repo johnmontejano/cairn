@@ -195,6 +195,14 @@ export interface SourceConnector {
   list(input: { connectionId: Uuid; cursor: string | null; credential: string | null }): Promise<{
     items: FetchedSource[];
     nextCursor: string | null;
+    /**
+     * How many items this connector saw and deliberately did not return —
+     * bulk mail, for instance. Counted separately from the items that were
+     * returned and then deduplicated, because "we read it and it was already
+     * here" and "we decided it was not worth reading" are different facts and
+     * a sync run that reports them as one number is lying about one of them.
+     */
+    filtered?: number;
   }>;
 }
 

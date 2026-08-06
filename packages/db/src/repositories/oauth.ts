@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { sha256Hex } from '@cairn/crypto';
-import type { McpScope, SensitivityLevel, Uuid } from '@cairn/domain';
+import type { McpScope, MemoryType, SensitivityLevel, Uuid } from '@cairn/domain';
 import { ValidationError } from '@cairn/domain';
 import type { CairnTx } from '../client';
 import * as schema from '../schema';
@@ -241,6 +241,7 @@ export interface ResolvedAccessToken {
   resource: string;
   clientName: string;
   projectIds: Uuid[] | null;
+  memoryTypes: MemoryType[] | null;
   maxSensitivity: SensitivityLevel;
 }
 
@@ -299,6 +300,10 @@ export async function findAccessToken(
     resource: row.token.resource,
     clientName: row.client.name,
     projectIds: row.client.projectIds as Uuid[] | null,
+    // Read from the connection, not the token, for the same reason as `scopes`
+    // above: narrowing what a connection may read must take effect on tokens
+    // already issued, not only on the next one.
+    memoryTypes: row.client.memoryTypes as MemoryType[] | null,
     maxSensitivity: row.client.maxSensitivity as SensitivityLevel,
   };
 }

@@ -365,11 +365,15 @@ async function handleConnectionSync(services: CairnServices, job: Job): Promise<
   let imported = 0;
   let skipped = 0;
   try {
-    const { items, nextCursor } = await connector.list({
+    const { items, nextCursor, filtered } = await connector.list({
       connectionId,
       cursor: context.connection.cursor,
       credential: context.credential,
     });
+    // Items the connector saw and declined to return — bulk mail, mostly. They
+    // were seen and they were skipped, and the run says both.
+    seen += filtered ?? 0;
+    skipped += filtered ?? 0;
     for (const fetched of items) {
       seen += 1;
       const result = await submitSource(services, {

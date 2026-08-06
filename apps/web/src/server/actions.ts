@@ -906,6 +906,33 @@ export async function disconnectSource(
  * Connected AIs
  * ------------------------------------------------------------------ */
 
+/**
+ * Which memory types a new connection may read, as submitted.
+ *
+ * Three states, and the difference between the last two matters:
+ *
+ *   - The form did not offer the choice at all (no `memoryTypesOffered` marker)
+ *     — `null`, every type, exactly as before this option existed.
+ *   - Every type ticked — also `null`, deliberately, rather than a list naming
+ *     all eight. A person who narrowed nothing should keep reading everything,
+ *     including memory types added after they connected; freezing today's list
+ *     into the row would quietly withhold tomorrow's.
+ *   - A subset ticked — that subset, and only that subset.
+ *
+ * Nothing ticked is rejected by the caller rather than resolved here: it is
+ * the one input with no sensible reading, since a connection that may read no
+ * kind of memory is a connection that does nothing.
+ */
+function readMemoryTypes(formData: FormData): MemoryType[] | null | 'none' {
+  if (formData.get('memoryTypesOffered') !== '1') return null;
+  const selected = formData
+    .getAll('memoryTypes')
+    .map(String)
+    .filter((t): t is MemoryType => (memoryTypes as readonly string[]).includes(t));
+  if (selected.length === 0) return 'none';
+  return selected.length === memoryTypes.length ? null : selected;
+}
+
 export async function createConnectedAi(
   _prev: ActionResult,
   formData: FormData,
@@ -916,6 +943,10 @@ export async function createConnectedAi(
     const name = String(formData.get('name') ?? '').trim() || 'My AI assistant';
     const allowProposals = formData.get('allowProposals') === 'on';
     const includeSensitive = formData.get('includeSensitive') === 'on';
+    const grantedTypes = readMemoryTypes(formData);
+    if (grantedTypes === 'none') {
+      return { error: 'Choose at least one kind of memory this tool may read.' };
+    }
 
     const created = await withTenant(context.services.handle, context.actor, async (tx) => {
       const result = await clientsRepo.createMcpClient(tx, {
@@ -923,6 +954,7 @@ export async function createConnectedAi(
         name,
         scopes: allowProposals ? ['memory:read', 'memory:propose'] : ['memory:read'],
         projectIds: null,
+        memoryTypes: grantedTypes,
         maxSensitivity: includeSensitive ? 'sensitive' : 'normal',
       });
       await auditRepo.recordAudit(tx, {
@@ -969,6 +1001,10 @@ export async function approveAiConnection(
 
     const params = new URLSearchParams(String(formData.get('request') ?? ''));
     const includeSensitive = formData.get('includeSensitive') === 'on';
+    const grantedTypes = readMemoryTypes(formData);
+    if (grantedTypes === 'none') {
+      return { error: 'Choose at least one kind of memory this tool may read.' };
+    }
 
     const outcome = await withTenant(context.services.handle, context.actor, async (tx) => {
       const validated = await validateAuthorizationRequest(tx, params);
@@ -991,6 +1027,7 @@ export async function approveAiConnection(
         name: request.client.clientName,
         scopes: request.scopes,
         projectIds: null,
+        memoryTypes: grantedTypes,
         maxSensitivity: includeSensitive ? 'sensitive' : 'normal',
       });
 

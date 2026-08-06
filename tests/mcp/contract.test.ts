@@ -41,6 +41,7 @@ describe('the MCP server as a client sees it', () => {
         name: 'Test assistant',
         scopes: ['memory:read'],
         projectIds: null,
+        memoryTypes: null,
         maxSensitivity: 'normal' as SensitivityLevel,
         ...overrides,
       },
@@ -360,6 +361,7 @@ describe('MCP authentication', () => {
         name: 'Claude on my laptop',
         scopes: ['memory:read'],
         projectIds: null,
+        memoryTypes: null,
         maxSensitivity: 'normal',
       }),
     );
@@ -379,6 +381,7 @@ describe('MCP authentication', () => {
         name: 'Another tool',
         scopes: ['memory:read'],
         projectIds: null,
+        memoryTypes: null,
         maxSensitivity: 'normal',
       }),
     );
@@ -403,6 +406,7 @@ describe('MCP authentication', () => {
         name: 'Temporary',
         scopes: ['memory:read'],
         projectIds: null,
+        memoryTypes: null,
         maxSensitivity: 'normal',
       }),
     );
@@ -423,6 +427,7 @@ describe('MCP authentication', () => {
           name: 'Too powerful',
           scopes: ['memory:write' as never],
           projectIds: null,
+          memoryTypes: null,
           maxSensitivity: 'normal',
         }),
       ),

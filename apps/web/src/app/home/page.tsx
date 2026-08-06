@@ -3,8 +3,8 @@ import { redirect } from 'next/navigation';
 import { CANONICAL_DOCS } from '@cairn/domain';
 import { Badge, Callout, Card, EmptyState, ProgressSteps } from '@cairn/ui';
 import { AppShell } from '@/components/chrome';
-import { MemoryCard } from '@/components/memory-card';
 import { RecentDecisions } from '@/components/recent-decisions';
+import { ReviewQueue } from '@/components/review-queue';
 import { csrfToken, requireContext, workspaceName } from '@/server/context';
 import { loadOverview } from '@/server/views';
 
@@ -228,16 +228,7 @@ export default async function HomePage() {
             here first.
           </EmptyState>
         ) : (
-          <div className="cairn-stack cairn-stack--md">
-            {overview.proposals.map((card) => (
-              <MemoryCard
-                key={card.item.id}
-                card={card}
-                csrf={csrf}
-                projectId={context.project.id}
-              />
-            ))}
-          </div>
+          <ReviewQueue cards={overview.proposals} csrf={csrf} projectId={context.project.id} />
         )}
       </section>
 

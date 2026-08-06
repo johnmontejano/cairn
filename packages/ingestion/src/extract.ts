@@ -38,11 +38,21 @@ const SENTENCE_CUES: Cue[] = [
   { type: 'decision', pattern: /\b(decision|decided)\b.*\b(to|that|on)\b/i, confidence: 0.75 },
   {
     type: 'operating_rule',
-    pattern: /\b(always|never|do not|don't|must not|should always|make sure to|keep)\b/i,
+    // `keep` on its own used to be here and matched "keep me posted", "keep
+    // shopping", and "keep in touch" — the other words carry the rule.
+    pattern: /\b(always|never|do not|don't|must not|should always|make sure to)\b/i,
     confidence: 0.6,
   },
-  { type: 'next_step', pattern: /\b(needs? to|going to|will|must|should)\s+\w+/i, confidence: 0.6 },
-  { type: 'next_step', pattern: /\b(todo|to do|action|follow up|chase)\b/i, confidence: 0.7 },
+  {
+    type: 'next_step',
+    // A next step has somebody who has to take it. Requiring a subject — a
+    // pronoun or a capitalised name — is what separates "Priya will send the
+    // lease" from "this will change everything", which the bare modal matched.
+    pattern:
+      /\b(i|we|you|they|he|she|[A-Z][a-z]+)\s+(will|must|should|needs? to|(is|are|am) going to)\b/,
+    confidence: 0.6,
+  },
+  { type: 'next_step', pattern: /\b(todo|to do|action item|follow up|chase)\b/i, confidence: 0.7 },
   {
     type: 'current_state',
     pattern:
@@ -82,6 +92,57 @@ const HEADING_CUES: Array<{ type: MemoryType; pattern: RegExp; confidence: numbe
   { type: 'preference', pattern: /preferences?|style|tone/i, confidence: 0.75 },
   { type: 'person_org', pattern: /people|team|who|contacts|organi[sz]ations?/i, confidence: 0.75 },
 ];
+
+/**
+ * Sentences that are advertising, not memory.
+ *
+ * Marketing prose is written in the exact register this extractor looks for.
+ * "We've decided to bring you free shipping" is a decision by every cue below;
+ * "never miss a deal" is an operating rule; "you should upgrade today" is a
+ * next step. Without this list a single promotional email yields a dozen
+ * confident, well-formed, completely worthless memories — and because they read
+ * as plausible, they are more expensive to clear than obvious junk would be.
+ *
+ * This runs before classification rather than after, so a span matching any of
+ * these is never typed, never scored, and never reaches review. Placed here
+ * rather than in the Gmail connector on purpose: the same copy arrives in
+ * forwarded mail, in pasted text, and in Drive documents, and all of those
+ * deserve the same treatment.
+ */
+const PROMOTIONAL_PATTERNS: RegExp[] = [
+  // List-mail machinery.
+  /\bunsubscribe\b|\bopt[- ]out\b|\bmanage (your )?(email )?preferences\b/i,
+  /\bview (this )?(email|it) (in|on) (your )?(browser|the web)\b|\bhaving trouble viewing\b/i,
+  /\byou (are )?receiv(ed|ing) this\b|\bthis email was sent to\b|\badd us to your address book\b/i,
+  // Calls to action.
+  /\b(shop|buy|order|book|subscribe|register|download|upgrade|claim)\s+(now|today|yours)\b/i,
+  /\bclick|tap\s+here\b|\bget started (today|now)\b|\bstart your (free )?trial\b/i,
+  // Urgency and discounting.
+  /\blimited[- ]time\b|\bact now\b|\blast chance\b|\bdon'?t miss\b|\bhurry\b|\bwhile stocks last\b/i,
+  /\b(ends|expires)\s+(soon|today|tonight|tomorrow|this week)\b|\bonly \d+ (left|days?|hours?)\b/i,
+  /\b\d{1,3}%\s*off\b|\bsave (up to )?[$£€]\d|\b(promo|discount|coupon) code\b/i,
+  /\b(exclusive|special|introductory) offer\b|\bdeal of the (day|week)\b|\bflash sale\b/i,
+  // The retail promise, which is the shape marketing borrows from an operating
+  // rule: "never pay for shipping again", "always free returns". Without these
+  // the `always`/`never` cue reads a sales pitch as a rule the person lives by.
+  /\b(free|no)\s+(shipping|returns?|delivery|postage|exchanges)\b/i,
+  /\bmiss (a|out on)\s+\w*\s*(deal|sale|offer|discount|saving)/i,
+  /\bpay for (shipping|delivery|postage)\b/i,
+  // Footers and legal boilerplate.
+  /\ball rights reserved\b|\bcopyright\s*©|\b©\s*\d{4}\b|\bterms (and conditions )?apply\b/i,
+  /\bprivacy policy\b|\bfollow us on\b|\bconnect with us on\b/i,
+];
+
+/**
+ * Shouting, which prose a person wrote for another person does not do.
+ * Two or more all-caps words, or repeated exclamation marks.
+ */
+const SHOUTING = /(\b[A-Z]{4,}\b[^a-z]{0,20}){2,}|!{2,}/;
+
+function looksPromotional(text: string): boolean {
+  if (SHOUTING.test(text)) return true;
+  return PROMOTIONAL_PATTERNS.some((p) => p.test(text));
+}
 
 /** Phrases that suggest a person would not want this shared with an AI client. */
 const SENSITIVE_PATTERNS = [
@@ -163,8 +224,18 @@ function classify(span: Span): { type: MemoryType; confidence: number } | null {
     }
   }
   // Statements of fact only qualify if they are substantial enough to be worth
-  // remembering on their own.
-  if (span.text.length >= 40 && /\b(is|are|was|were|has|have)\b/i.test(span.text)) {
+  // remembering on their own. This is the loosest rule in the file and so the
+  // one that generates the most review work: at 40 characters it fired on
+  // essentially every sentence containing a copula, which in an email means
+  // every sentence. The bar is a real one now — long enough to carry a claim,
+  // and not a question, a heading fragment, or a line that is mostly a link.
+  if (
+    span.text.length >= 60 &&
+    /\b(is|are|was|were|has|have)\b/i.test(span.text) &&
+    !span.text.trimEnd().endsWith('?') &&
+    span.text.split(/\s+/).length >= 8 &&
+    !/https?:\/\/\S{20,}/.test(span.text)
+  ) {
     return { type: 'fact', confidence: 0.45 };
   }
   return null;
@@ -193,6 +264,7 @@ export class CueMemoryExtractor implements MemoryExtractor {
 
     for (const span of spans) {
       if (span.text.length < 15 || span.text.length > 600) continue;
+      if (looksPromotional(span.text)) continue;
       const classified = classify(span);
       if (!classified) continue;
 
@@ -325,7 +397,14 @@ export class ModelMemoryExtractor implements MemoryExtractor {
       };
 
       const parsed = memoryCandidateListSchema.parse(JSON.parse(json.output_text ?? '{}'));
-      return { candidates: verifyEvidence(parsed.candidates, text), usage };
+      // A model reads marketing copy as earnestly as it reads a meeting note,
+      // and the instructions above do not stop it: "we've decided to bring you
+      // free shipping" genuinely is a decision, sincerely extracted. The same
+      // guard the built-in extractor uses applies to the model's output.
+      const candidates = verifyEvidence(parsed.candidates, text).filter(
+        (candidate) => !looksPromotional(candidate.value),
+      );
+      return { candidates, usage };
     } catch {
       const fallback = await this.fallback.extract(request);
       return {

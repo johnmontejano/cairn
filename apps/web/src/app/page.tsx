@@ -180,8 +180,8 @@ export default async function SignInPage({
                 Three steps, then it gets out of your way
               </h2>
               <p className="cairn-landing-section__lede" data-reveal>
-                There is nothing to configure and nothing to learn first. You can be looking at
-                your own memory in about a minute.
+                There is nothing to configure and nothing to learn first. You can be looking at your
+                own memory in about a minute.
               </p>
             </div>
             <ol className="cairn-trail">

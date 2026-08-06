@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import { sha256Hex } from '@cairn/crypto';
-import type { McpClient, McpScope, SensitivityLevel, Uuid } from '@cairn/domain';
+import type { McpClient, McpScope, MemoryType, SensitivityLevel, Uuid } from '@cairn/domain';
 import { ValidationError } from '@cairn/domain';
 import type { CairnTx } from '../client';
 import * as schema from '../schema';
@@ -28,6 +28,7 @@ export async function createMcpClient(
     name: string;
     scopes: McpScope[];
     projectIds: Uuid[] | null;
+    memoryTypes: MemoryType[] | null;
     maxSensitivity: SensitivityLevel;
     subject?: string | null;
   },
@@ -48,6 +49,7 @@ export async function createMcpClient(
       name: input.name,
       scopes: input.scopes,
       projectIds: input.projectIds,
+      memoryTypes: input.memoryTypes,
       maxSensitivity: input.maxSensitivity,
       tokenHash: hash,
       subject: input.subject ?? null,
@@ -122,6 +124,7 @@ function toClient(row: typeof schema.mcpClients.$inferSelect): McpClient {
     name: row.name,
     scopes: (row.scopes ?? []) as McpScope[],
     projectIds: row.projectIds,
+    memoryTypes: (row.memoryTypes ?? null) as MemoryType[] | null,
     maxSensitivity: row.maxSensitivity as SensitivityLevel,
     tokenHash: row.tokenHash,
     subject: row.subject,

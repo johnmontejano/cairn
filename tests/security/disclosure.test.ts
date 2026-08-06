@@ -35,6 +35,7 @@ describe('nothing unapproved, private, or deleted can be retrieved', () => {
       name: 'Test assistant',
       scopes: ['memory:read'],
       projectIds: null,
+      memoryTypes: null,
       maxSensitivity: 'normal',
       ...overrides,
     },
@@ -55,7 +56,7 @@ describe('nothing unapproved, private, or deleted can be retrieved', () => {
       const item = await memoryRepo.insertMemoryItem(tx, crypto, {
         workspaceId: world.actor.workspaceId,
         projectId: world.project.id,
-        type: 'fact',
+        type: 'fact' as const,
         status: options.status,
         title: label,
         value,
@@ -244,7 +245,7 @@ describe('evidence is required before anything can be kept', () => {
       memoryRepo.insertMemoryItem(tx, crypto, {
         workspaceId: world.actor.workspaceId,
         projectId: world.project.id,
-        type: 'fact',
+        type: 'fact' as const,
         status: 'proposed',
         title: 'Unsupported claim',
         value: 'Something nobody wrote down anywhere.',

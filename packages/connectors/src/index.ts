@@ -12,6 +12,7 @@ export * from './googleDrive';
 export * from './github';
 export * from './notion';
 export * from './gmail';
+export * from './mailFilter';
 export * from './googleCalendar';
 export * from './pipedream';
 export * from './fixtures/sample';
