@@ -258,7 +258,15 @@ test.describe('the main journey has no jargon in it', () => {
 test.describe('accessibility fundamentals', () => {
   test('every page has one h1, a skip link, and a labelled main region', async ({ page }) => {
     await signIn(page, freshEmail('visitor'));
-    for (const path of ['/home', '/sources', '/memory', '/ask', '/connections', '/settings']) {
+    for (const path of [
+      '/home',
+      '/sources',
+      '/memory',
+      '/ask',
+      '/connections',
+      '/exports',
+      '/settings',
+    ]) {
       await page.goto(path);
       await expect(page.locator('h1')).toHaveCount(1);
       await expect(page.locator('#main')).toBeVisible();
@@ -320,7 +328,7 @@ test.describe('accessibility fundamentals', () => {
   test('the layout does not scroll sideways on a phone', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'checked on the mobile project only');
     await signIn(page, freshEmail('visitor'));
-    for (const path of ['/home', '/memory', '/sources', '/settings']) {
+    for (const path of ['/home', '/memory', '/sources', '/exports', '/settings']) {
       await page.goto(path);
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,

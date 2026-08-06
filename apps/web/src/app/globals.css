@@ -229,6 +229,13 @@ a:hover {
   flex-wrap: wrap;
   justify-content: space-between;
 }
+/* The two links stay side by side and wrap as a pair, so a narrow screen
+   never strands one of them alone on its own line. */
+.cairn-footer__links {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
 
 /* ------------------------------- typography ------------------------------ */
 
@@ -325,6 +332,14 @@ pre.cairn-code {
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+/* A quiet closing sentence, as prose rather than as chips. `.cairn-meta` is a
+   flex row and turns every child into a flex item, which puts a 0.75rem gap
+   either side of an inline link mid-sentence — right for a row of labels,
+   wrong for "…lives in Settings." */
+.cairn-note {
+  color: var(--cairn-ink-subtle);
+  font-size: var(--cairn-text-xs);
 }
 .cairn-excerpt {
   border-left: 3px solid var(--cairn-border-strong);

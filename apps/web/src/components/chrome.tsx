@@ -153,7 +153,13 @@ export async function AppShell({
       <footer className="cairn-footer">
         <div className="cairn-footer__inner">
           <span>Your memory stays private to you. Nothing is shared unless you connect it.</span>
-          <Link href="/settings#where-your-data-goes">Where your data goes</Link>
+          {/* Two links, not one: "where it goes" answers the worry, "take a
+              copy" is the thing you can actually do about it, and the second
+              is the only route to /exports that appears on every page. */}
+          <span className="cairn-footer__links">
+            <Link href="/exports">Take a copy</Link>
+            <Link href="/settings#where-your-data-goes">Where your data goes</Link>
+          </span>
         </div>
       </footer>
     </div>

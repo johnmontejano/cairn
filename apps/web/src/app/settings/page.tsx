@@ -1,14 +1,9 @@
+import Link from 'next/link';
 import { Badge, Callout, Card, Disclosure, Field, TextArea, TextInput } from '@cairn/ui';
-import { PRODUCT } from '@cairn/config';
 import { IDENTITY_MAX_CHARS } from '@cairn/search';
 import { AppShell } from '@/components/chrome';
 import { ActionForm, ConfirmForm, SubmitButton } from '@/components/forms';
-import {
-  deleteEverything,
-  restoreFromBackup,
-  saveWorkspaceSettings,
-  updateIdentity,
-} from '@/server/actions';
+import { deleteEverything, saveWorkspaceSettings, updateIdentity } from '@/server/actions';
 import { csrfToken, requireContext } from '@/server/context';
 import { loadSettings } from '@/server/views';
 
@@ -20,7 +15,6 @@ export default async function SettingsPage() {
   const csrf = await csrfToken();
   const view = await loadSettings(context);
   const { providers, database, mode } = context.services.config;
-  const projectId = context.project.id;
 
   return (
     <AppShell current="/settings" email={context.email}>
@@ -30,104 +24,28 @@ export default async function SettingsPage() {
         readable without knowing how any of it works.
       </p>
 
-      {/* ------------------------------ export ------------------------------ */}
+      {/* ------------------------------ your copies -------------------------- */}
+      {/* Downloading, backing up and restoring moved to their own page. They
+          are the concrete form of "it stays yours" and were the two sections
+          nobody scrolled far enough into Settings to find. The pointer stays
+          here because Settings is where someone thinking about their data
+          looks first. */}
       <section aria-labelledby="your-copy" style={{ marginBottom: '2.5rem' }}>
         <h2 id="your-copy" className="cairn-section-title">
           Keep your own copy
         </h2>
-        <div className="cairn-grid">
-          <Card>
-            <h3 className="cairn-card__title">Download as readable files</h3>
-            <p className="cairn-card__description">
-              A zip of ordinary Markdown files. Open them in any text editor. Nothing about them
-              needs {PRODUCT.name}.
-            </p>
-            <div style={{ marginTop: '0.875rem' }}>
-              <a
-                className="cairn-button cairn-button--primary"
-                href={`/api/export?projectId=${projectId}`}
-                download
-              >
-                Download {view.memoryCount} memories
-              </a>
-            </div>
-          </Card>
-
-          <Card>
-            <h3 className="cairn-card__title">Make a backup you can restore</h3>
-            <p className="cairn-card__description">
-              A single encrypted file containing your memory, its history, and the fingerprints
-              needed to prove it came back intact.
-            </p>
-            <Callout tone="warn" title="Choose the passphrase carefully">
-              The file is locked with a passphrase you pick. Nobody — including whoever runs this
-              app — can open it without that passphrase. If you lose it, the backup is gone.
-            </Callout>
-            <form
-              method="post"
-              action="/api/backup"
-              className="cairn-stack cairn-stack--md"
-              style={{ marginTop: '0.875rem' }}
-            >
-              <input type="hidden" name="csrf" value={csrf} />
-              <input type="hidden" name="projectId" value={projectId} />
-              <Field
-                id="backup-pass"
-                label="Backup passphrase"
-                hint="At least 10 characters. Write it down somewhere safe."
-                required
-              >
-                {({ id, describedBy }) => (
-                  <TextInput
-                    id={id}
-                    name="passphrase"
-                    type="password"
-                    minLength={10}
-                    required
-                    autoComplete="new-password"
-                    aria-describedby={describedBy}
-                  />
-                )}
-              </Field>
-              <div>
-                <button type="submit" className="cairn-button cairn-button--secondary">
-                  Download backup
-                </button>
-              </div>
-            </form>
-          </Card>
-        </div>
-
-        {view.backups.length > 0 ? (
-          <Disclosure summary={`Backups you have made (${view.backups.length})`}>
-            <table className="cairn-table">
-              <thead>
-                <tr>
-                  <th scope="col">When</th>
-                  <th scope="col">Size</th>
-                  <th scope="col">Fingerprint</th>
-                </tr>
-              </thead>
-              <tbody>
-                {view.backups.map((backup) => (
-                  <tr key={backup.id}>
-                    <th scope="row">
-                      {backup.createdAt.toISOString().slice(0, 16).replace('T', ' ')}
-                    </th>
-                    <td>{Math.max(1, Math.round(backup.byteSize / 1024))} KB</td>
-                    <td>
-                      <code className="cairn-code">{backup.contentHash.slice(7, 19)}</code>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p style={{ marginBottom: 0 }}>
-              Only the size and fingerprint are recorded here. The backup file itself is never kept
-              on the server — that is what makes the passphrase meaningful.
-            </p>
-          </Disclosure>
-        ) : null}
+        <Card>
+          <p className="cairn-card__description" style={{ marginTop: 0 }}>
+            Download everything as ordinary Markdown, make an encrypted backup, or restore one you
+            made earlier.{' '}
+            {view.memoryCount > 0 ? `${view.memoryCount} memories are ready to go.` : null}
+          </p>
+          <div style={{ marginTop: '0.875rem' }}>
+            <Link className="cairn-button cairn-button--secondary" href="/exports">
+              Go to your copies
+            </Link>
+          </div>
+        </Card>
       </section>
 
       {/* ----------------------------- identity ----------------------------- */}
@@ -167,50 +85,6 @@ export default async function SettingsPage() {
             </Field>
             <div>
               <SubmitButton busyLabel="Saving…">Save summary</SubmitButton>
-            </div>
-          </ActionForm>
-        </Card>
-      </section>
-
-      {/* ------------------------------ restore ----------------------------- */}
-      <section aria-labelledby="restore" style={{ marginBottom: '2.5rem' }}>
-        <h2 id="restore" className="cairn-section-title">
-          Restore from a backup
-        </h2>
-        <Card>
-          <p className="cairn-card__description" style={{ marginTop: 0 }}>
-            Lost your computer, or starting again somewhere else? Upload a backup file. Check it
-            first if you want to see what is inside without changing anything.
-          </p>
-          <ActionForm
-            action={restoreFromBackup}
-            csrf={csrf}
-            hidden={{ projectId }}
-            className="cairn-stack cairn-stack--md"
-          >
-            <Field id="restore-file" label="Backup file" required>
-              {({ id }) => (
-                <input
-                  id={id}
-                  className="cairn-input"
-                  type="file"
-                  name="backup"
-                  accept=".cairnbackup"
-                  required
-                />
-              )}
-            </Field>
-            <Field id="restore-pass" label="Its passphrase" required>
-              {({ id }) => (
-                <TextInput id={id} name="passphrase" type="password" required autoComplete="off" />
-              )}
-            </Field>
-            <label className="cairn-choice">
-              <input type="checkbox" name="dryRun" defaultChecked />
-              Just check it — do not change anything yet
-            </label>
-            <div>
-              <SubmitButton busyLabel="Checking…">Continue</SubmitButton>
             </div>
           </ActionForm>
         </Card>

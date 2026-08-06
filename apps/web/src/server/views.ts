@@ -519,6 +519,67 @@ export async function loadSettings(context: RequestContext): Promise<SettingsVie
   });
 }
 
+export interface ExportsView {
+  /** Approved memories in this project — what a Markdown export would contain. */
+  memoryCount: number;
+  /** Every source item in the workspace, named so the page can say what is covered. */
+  sourceCount: number;
+  backups: Array<{
+    id: string;
+    createdAt: Date;
+    byteSize: number;
+    contentHash: string;
+    note: string | null;
+  }>;
+}
+
+/**
+ * Everything `/exports` needs, and nothing else.
+ *
+ * Deliberately not `loadSettings`, which would answer the same three questions
+ * but also price a month of model usage and assemble the identity summary from
+ * up to 200 decrypted memory items — real work for a page that never shows
+ * either. The two share query shapes rather than a call.
+ */
+export async function loadExports(context: RequestContext): Promise<ExportsView> {
+  return withTenant(context.services.handle, context.actor, async (tx) => {
+    const [backupRows, [memory], [sources]] = await Promise.all([
+      tx
+        .select()
+        .from(schema.backups)
+        .where(eq(schema.backups.workspaceId, context.actor.workspaceId))
+        .orderBy(desc(schema.backups.createdAt))
+        .limit(10),
+      tx
+        .select({ n: sql<number>`count(*)::int` })
+        .from(schema.memoryItems)
+        .where(
+          and(
+            eq(schema.memoryItems.workspaceId, context.actor.workspaceId),
+            eq(schema.memoryItems.projectId, context.project.id),
+            eq(schema.memoryItems.status, 'approved'),
+          ),
+        ),
+      tx
+        .select({ n: sql<number>`count(*)::int` })
+        .from(schema.sourceItems)
+        .where(eq(schema.sourceItems.workspaceId, context.actor.workspaceId)),
+    ]);
+
+    return {
+      memoryCount: memory?.n ?? 0,
+      sourceCount: sources?.n ?? 0,
+      backups: backupRows.map((b) => ({
+        id: b.id,
+        createdAt: b.createdAt,
+        byteSize: b.byteSize,
+        contentHash: b.contentHash,
+        note: b.note,
+      })),
+    };
+  });
+}
+
 /** Turns evidence into the shape the citation UI renders. */
 export function toCitations(card: MemoryCardView): Citation[] {
   return card.evidence.map((e) => ({
