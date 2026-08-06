@@ -44,6 +44,44 @@ credential from the user; none of it should be done without explicit approval.
 
 ## Immediate
 
+0aa. **Have the owner actually run `codex mcp add`.** The whole protocol chain
+was verified against production by hand (401 → RFC 9728 discovery → dynamic
+client registration → consent screen), and the RFC 8252 loopback-port gap that
+could have refused Codex's callback is fixed and tested. But Codex is not
+installed on the machine this was built from, so nobody has yet watched the
+real thing complete. Command:
+`codex mcp add cairn --url https://cairn-web-beta.vercel.app/api/mcp`
+(needs Codex 0.77+; then `/mcp`). If it fails, the first thing to check is
+whether the `redirect_uri` Codex registers matches the one it authorizes with
+— `redirectUriAllowed` relaxes the port but requires the path to be identical,
+and Codex appends a per-server `/callback/<hash>` segment.
+
+0ab. **`offline_access` is absent from `scopes_supported`.** OpenAI's connector
+pre-flight documents checking for it and warns access can lapse at token
+expiry. Cairn's `refresh_token` grant already works, so the impact is limited
+to ChatGPT-in-browser, which is marked unsupported anyway. `parseScopes` drops
+unknown scopes rather than refusing them, so advertising it would be safe —
+but it was left alone deliberately rather than changed unasked. Decide.
+
+0ac. **The two OAuth metadata documents advertise different scopes.** Protected
+Resource Metadata offers only `memory:read`; the authorization server offers
+`memory:read` and `memory:propose`. This is deliberate (the code comment says
+propose is meant to arrive by step-up, not up front) but it means a client
+deriving scope from the PRM — the spec-correct path — never asks for propose.
+Confirm that is still the intent.
+
+0ad. **LinkedIn and X/Twitter do not exist as connectors.** The owner listed
+them among "connected apps". `sourceProviders` has no entry and there is no
+`CONNECTOR_DESCRIPTIONS` record, so this is new connector work, not an
+interface change. Gmail and Calendar's hand-rolled Google OAuth is the nearest
+template.
+
+0ae. **Junk memories predating the Gmail filter are still stored.** The filter
+stops new ones, but Cairn only ever stored `Subject/From/To/Date` — not
+`List-Unsubscribe` — so old newsletter-derived proposals cannot be detected
+retroactively with any confidence. "Remove all N" on each source group is the
+reliable way to clear them.
+
 0z. ~~**Apply migrations 0005–0007.**~~ Done 2026-07-31, verified against
 Supabase before merge.
 

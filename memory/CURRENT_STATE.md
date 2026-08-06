@@ -1,6 +1,76 @@
 # Current State
 
-Last updated: 2026-08-01
+Last updated: 2026-08-06
+
+## Connect-first restructure, and two real bugs behind it (2026-08-06)
+
+Shipped as `641ccd6`, live and verified on the owner's own account. The
+owner's complaint was that Home told him nothing and he could not tell what
+was connected. Both turned out to have causes in the data layer, not the
+interface.
+
+**`last_used_at` was never written on the production OAuth path.**
+`authenticateIssued` — the path every sign-in-connected tool takes — did not
+call `clientsRepo.touchClient`; only `authenticateLocal` (connection codes)
+and `authenticateExternal` (inert) did. So the column was null forever in
+production and the connections table said "Not yet" about tools that were
+working. Fixed with one call in `authenticateIssued`. This is why the owner
+could not tell what was connected, and why "Active" (which only ever meant
+`revokedAt === null`) was worthless. Status is now Working / Set up, not used
+yet / Turned off, derived in `components/setup-status.tsx`.
+
+**Redirect URI matching refused a varying loopback port.** `/connect`
+exact-matched against the registered list, but RFC 8252 §7.3 requires an
+authorization server to accept any port on a loopback address — a CLI cannot
+know which port is free until it binds one. Codex returns on
+`http://127.0.0.1:<ephemeral>/callback/<hash>`, so this could have refused
+its login at the consent screen. `redirectUriAllowed` in
+`server/oauth-request.ts` now relaxes the port for loopback only; scheme,
+host, path and query still match exactly (9 tests in
+`tests/unit/redirect-uri.test.ts` pin both halves).
+
+**The landing page asked for an email it then threw away.**
+`WorkOsAuthProvider.startEmailSignIn` ignores its `email` argument entirely —
+the hosted page collects it — so the form was a pure double-entry. The email
+field now renders only in fixture/demo mode, where it is genuinely needed.
+
+Also in: nav 7 → 5 (Home, AI tools, Apps, Memory, Settings; Ask and History
+keep their routes but leave the bar), "Sources" renamed "Apps", a setup
+checklist that counts remaining steps and removes itself when done,
+`removeAllFromSource` beside `keepAllFromSource`, and an Antigravity card.
+
+**Client facts worth keeping (all adversarially verified against vendor docs,
+several first-pass claims were wrong):**
+
+- **Antigravity** — config key must be `serverUrl`. Not `url`, not `httpUrl`;
+  a snippet copied from Cursor silently never loads with no error. Its OAuth
+  for remote MCP is broken in shipping builds (sends `initialize` without the
+  bearer token; Google tracker antigravity-cli #25), so a connection code is
+  the honest path, not a fallback.
+- **Gemini CLI** — `url` + `type: "http"`, NOT `httpUrl` (deprecated; the
+  published docs are stale). Automatic OAuth only fires when
+  `oauth.enabled` is set, so the first launch shows an alarming
+  auth-required error that is expected; `/mcp auth cairn` needs the server
+  name, bare `/mcp auth` lists nothing.
+- **ChatGPT desktop** — MCP lives on the Codex side of the app, not ordinary
+  chat; the settings section is labelled differently across official docs
+  ("MCP servers" vs "Integrations and MCP"). Windows is supported despite a
+  macOS-looking download page.
+- **Codex** — `--url` is real but undocumented (verified in
+  `codex-rs/cli/src/mcp_cmd.rs`); `codex mcp add` performs the OAuth login
+  itself, so `codex mcp login` is a re-run, not a required second step.
+
+**Operational notes.** Migration 0009 was applied to production by hand
+through the Supabase SQL editor (no production `DATABASE_URL` exists locally
+and the Supabase MCP server was unauthorized), with the ledger row inserted
+using the exact `sha256Hex` checksum so `pnpm db:migrate` still sees it as
+applied. A long-lived local PGlite database will 500 on `/home` until
+`pnpm db:migrate` is run — e2e never catches this because it builds fresh
+databases per run.
+
+`pnpm verify` green; `pnpm test:e2e` 59 passed, 1 pre-existing skip.
+
+## Landing elevated to full scroll experience (2026-08-01, night, second pass)
 
 ## Landing elevated to full scroll experience (2026-08-01, night, second pass)
 
