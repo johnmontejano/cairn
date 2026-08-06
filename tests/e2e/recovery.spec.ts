@@ -21,12 +21,22 @@ function freshEmail(label: string): string {
 async function signIn(page: Page, email: string): Promise<void> {
   await page.goto('/');
   await page.getByLabel('Your email address').fill(email);
-  await page.getByRole('button', { name: 'Continue' }).click();
-  const code = await page
+
+  // Clicking before React has hydrated the form lets the native submit win
+  // the race: the server processes the action but the client never renders
+  // the code stage, and the old single click then waited forever. Under a
+  // loaded machine this happened on every run. Re-clicking is safe — each
+  // click makes a fresh challenge, and the code shown always belongs to the
+  // challenge in the form's hidden field.
+  const codeLocator = page
     .locator('strong')
     .filter({ hasText: /^\d{6}$/ })
-    .first()
-    .innerText();
+    .first();
+  await expect(async () => {
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(codeLocator).toBeVisible({ timeout: 10_000 });
+  }).toPass({ timeout: 90_000 });
+  const code = await codeLocator.innerText();
   await page.getByLabel('Six-digit code').fill(code);
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page).toHaveURL(/\/welcome|\/home/);
@@ -72,7 +82,7 @@ test('back up a real workspace and restore it into a different one', async ({ pa
   expect(sourceFacts.length, 'the example produced recognisable memory').toBeGreaterThan(0);
 
   // ---------------------------------------------------------------- backup
-  await page.goto('/settings');
+  await page.goto('/exports');
   await page.getByLabel('Backup passphrase').fill(PASSPHRASE);
 
   const download = page.waitForEvent('download', { timeout: 60_000 });
@@ -85,7 +95,7 @@ test('back up a real workspace and restore it into a different one', async ({ pa
   expect(bytes, 'the backup is not an empty shell').toBeGreaterThan(800);
 
   // The file must not be readable as plain text — the passphrase is the whole
-  // promise made on the Settings page.
+  // promise made on the Your copies page.
   const raw = readFileSync(savedAt).toString('utf8');
   expect(raw).not.toContain('Mill Street');
   expect(raw).not.toContain('September');
@@ -103,7 +113,7 @@ test('back up a real workspace and restore it into a different one', async ({ pa
   await expect(page.getByText(/Nothing is saved yet|What would you like/)).toBeVisible();
 
   // --------------------------------------------------------- dry run first
-  await page.goto('/settings');
+  await page.goto('/exports');
   await page.setInputFiles('input[type="file"][name="backup"]', savedAt);
   await page.getByLabel('Its passphrase').fill(PASSPHRASE);
   await expect(page.getByLabel(/Just check it/)).toBeChecked();
@@ -120,7 +130,7 @@ test('back up a real workspace and restore it into a different one', async ({ pa
   await expect(page.getByText(/Nothing is saved yet|What would you like/)).toBeVisible();
 
   // ------------------------------------------------------------ real restore
-  await page.goto('/settings');
+  await page.goto('/exports');
   await page.setInputFiles('input[type="file"][name="backup"]', savedAt);
   await page.getByLabel('Its passphrase').fill(PASSPHRASE);
   await page.getByLabel(/Just check it/).uncheck();
@@ -143,7 +153,7 @@ test('back up a real workspace and restore it into a different one', async ({ pa
   expect(restoredFacts.length, 'the original memory came back').toBeGreaterThan(0);
 
   // ------------------------------------------------- a wrong passphrase fails
-  await page.goto('/settings');
+  await page.goto('/exports');
   await page.setInputFiles('input[type="file"][name="backup"]', savedAt);
   await page.getByLabel('Its passphrase').fill('the-wrong-passphrase');
   await page.getByRole('button', { name: 'Continue' }).click();
