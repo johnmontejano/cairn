@@ -66,7 +66,7 @@ export default async function SourcesPage() {
   const context = await requireContext();
   const csrf = await csrfToken();
   const view = await loadSources(context);
-  const { mode } = context.services.config;
+  const { mode, scheduledSync } = context.services.config;
   const projectId = context.project.id;
   // "Live" matches the definition setup_status uses elsewhere: state === 'active'.
   // A connection that exists but is disconnected or needs reconnecting is not
@@ -151,8 +151,16 @@ export default async function SourcesPage() {
                           ? `Checked ${sinceInWords(connection.lastSyncedAt)}`
                           : 'Not checked yet'}
                       </span>
+                      {/* Says which of the two worlds this deployment is in.
+                          Claiming an automatic refresh that no scheduler is
+                          configured to perform would be the worse lie of the
+                          two, so the manual wording stays the default. */}
                       {connection.state !== 'disconnected' ? (
-                        <span>Only when you click Check for updates — nothing runs on its own</span>
+                        <span>
+                          {scheduledSync
+                            ? 'Checked every few hours, and whenever you click Check for updates'
+                            : 'Only when you click Check for updates — nothing runs on its own'}
+                        </span>
                       ) : null}
                       {connection.externalAccountLabel ? (
                         <span>{connection.externalAccountLabel}</span>

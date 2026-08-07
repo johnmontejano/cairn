@@ -4,5 +4,6 @@ export * from './extract';
 export * from './reconcile';
 export * from './canonical';
 export * from './pipeline';
+export * from './scheduled';
 export * from './services';
 export * from './observability';

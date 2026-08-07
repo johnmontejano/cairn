@@ -120,6 +120,16 @@ const envSchema = z.object({
    */
   CAIRN_INLINE_JOBS: z.enum(['auto', 'always', 'never']).default('auto'),
 
+  /**
+   * Shared secret the scheduler presents to `/api/cron/sync`.
+   *
+   * Its presence is also what lets the interface say whether connections
+   * refresh on their own, so it is read as configuration rather than only as a
+   * credential. Unset means no scheduled refresh: the endpoint refuses every
+   * caller, and the interface keeps saying nothing runs on its own.
+   */
+  CRON_SECRET: optionalStr,
+
   GOOGLE_CLIENT_ID: optionalStr,
   GOOGLE_CLIENT_SECRET: optionalStr,
   GOOGLE_REDIRECT_URI: optionalStr,
@@ -188,6 +198,12 @@ export interface AppConfig {
   readonly database: { readonly driver: 'pglite' | 'postgres'; readonly url?: string };
   /** True when the web process drains the job queue instead of a worker. */
   readonly inlineJobs: boolean;
+  /**
+   * True when a scheduler can reach `/api/cron/sync`, which is the difference
+   * between connections that refresh on their own and connections that only
+   * ever refresh when someone presses a button. The interface says which.
+   */
+  readonly scheduledSync: boolean;
   readonly providers: {
     readonly auth: ProviderStatus;
     readonly ai: ProviderStatus;
@@ -326,6 +342,7 @@ export function buildConfig(source: NodeJS.ProcessEnv = process.env): AppConfig 
           ? false
           : // `auto`: only the local single-process database needs it.
             !env.DATABASE_URL,
+    scheduledSync: Boolean(env.CRON_SECRET),
     database: env.DATABASE_URL
       ? { driver: 'postgres', url: env.DATABASE_URL }
       : { driver: 'pglite' },
