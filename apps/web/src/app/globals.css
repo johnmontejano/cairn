@@ -37,7 +37,7 @@ body {
 h1,
 h2,
 h3 {
-  font-family: var(--cairn-font-serif);
+  font-family: var(--cairn-font-heading);
   line-height: 1.25;
   letter-spacing: -0.01em;
 }
@@ -240,7 +240,7 @@ a:hover {
 /* ------------------------------- typography ------------------------------ */
 
 .cairn-page-title {
-  font-family: var(--cairn-font-serif);
+  font-family: var(--cairn-font-heading);
   font-size: var(--cairn-text-xl);
   font-weight: 650;
   margin: 0 0 0.375rem;
@@ -252,7 +252,7 @@ a:hover {
   font-size: var(--cairn-text-md);
 }
 .cairn-section-title {
-  font-family: var(--cairn-font-serif);
+  font-family: var(--cairn-font-heading);
   font-size: var(--cairn-text-lg);
   font-weight: 600;
   margin: 0 0 0.75rem;
@@ -515,7 +515,7 @@ pre.cairn-code {
   margin-bottom: 1.25rem;
 }
 .cairn-setup__title {
-  font-family: var(--cairn-font-serif);
+  font-family: var(--cairn-font-heading);
   font-size: var(--cairn-text-lg);
   font-weight: 650;
   margin: 0 0 0.25rem;

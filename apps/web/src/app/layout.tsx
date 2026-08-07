@@ -11,10 +11,11 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f4f6f8' },
-    { media: '(prefers-color-scheme: dark)', color: '#10141a' },
-  ],
+  // One ground, so one colour. Advertising a pale theme-colour to a
+  // light-mode browser tinted the address bar and the iOS status bar to a
+  // canvas the product no longer has, which reads as a flash of the old
+  // interface before the first paint.
+  themeColor: '#10141a',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

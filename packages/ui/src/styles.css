@@ -131,7 +131,7 @@
   margin-bottom: 0.875rem;
 }
 .cairn-card__title {
-  font-family: var(--cairn-font-serif);
+  font-family: var(--cairn-font-heading);
   font-size: var(--cairn-text-md);
   font-weight: 600;
   margin: 0;
@@ -295,7 +295,7 @@
   background: var(--cairn-surface-sunken);
 }
 .cairn-empty__title {
-  font-family: var(--cairn-font-serif);
+  font-family: var(--cairn-font-heading);
   margin: 0 0 0.5rem;
   font-size: var(--cairn-text-md);
   color: var(--cairn-ink);

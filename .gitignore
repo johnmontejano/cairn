@@ -50,3 +50,6 @@ next-env.d.ts
 .impeccable/config.local.json
 design-review/
 .vercel
+
+# Local visual-verification captures; proof for a session, not source.
+artifacts/

@@ -69,46 +69,80 @@
       sans-serif;
     --cairn-font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', serif;
     --cairn-font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+    /**
+     * The face headings inside the product actually use.
+     *
+     * It used to be `--cairn-font-serif`, which is a *fallback stack*, not a
+     * chosen face: on every machine this ships to, that resolves to Georgia,
+     * so the product's headings were a system serif nobody picked. The
+     * landing is a different case and keeps its own display face —
+     * `--cairn-font-display-face` (Spectral) is the one deliberate voice on
+     * the page, and it stays scoped there.
+     *
+     * Past sign-in the interface should recede, which is what the quiet
+     * system stack is for. Overriding this variable is how a licensed face
+     * gets adopted later, without hunting down heading rules one at a time.
+     */
+    --cairn-font-heading: var(--cairn-font-sans);
   }
 
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --cairn-paper: #10141a;
-      --cairn-surface: #171c22;
-      --cairn-surface-sunken: #0c0f13;
-      --cairn-surface-raised: #1d232b;
+  /**
+   * Dark is what this product is, not a preference it responds to.
+   *
+   * This used to sit behind `@media (prefers-color-scheme: dark)`, which meant
+   * the landing was committed dark while the app past sign-in went pale for
+   * anyone whose machine was set to light — so signing in stopped looking like
+   * the thing you had just been reading. One product, one ground.
+   *
+   * `:root:not([data-theme='light'])` rather than plain `:root` so the light
+   * values above stay reachable and nothing is destroyed: setting
+   * `data-theme="light"` on the document restores them wholesale. The
+   * `color-scheme` declaration is what gets native controls, scrollbars and
+   * form widgets to render dark too; without it they stay light and look
+   * pasted on.
+   *
+   * Every pair below was contrast-checked against this ground when the dark
+   * theme was written and those ratios are unchanged — see the comments.
+   */
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
 
-      /* Ink — 15.6:1, 8.8:1 and 5.1:1 on --cairn-paper */
-      --cairn-ink: #e7ecf2;
-      --cairn-ink-muted: #a9b4bf;
-      --cairn-ink-subtle: #7c8892;
+    --cairn-paper: #10141a;
+    --cairn-surface: #171c22;
+    --cairn-surface-sunken: #0c0f13;
+    --cairn-surface-raised: #1d232b;
 
-      /* Accent is a lighter tint here — a saturated indigo goes muddy on a
-         dark ground. 6.6:1 on paper, --cairn-accent-ink is 9.8:1. */
-      --cairn-accent: #7c97f0;
-      --cairn-accent-hover: #94aeff;
-      --cairn-accent-soft: #202a47;
-      --cairn-accent-ink: #aabbf7;
+    /* Ink — 15.6:1, 8.8:1 and 5.1:1 on --cairn-paper */
+    --cairn-ink: #e7ecf2;
+    --cairn-ink-muted: #a9b4bf;
+    --cairn-ink-subtle: #7c8892;
 
-      /* Status — unchanged hues, still comfortably AA against the new dark
-         paper: good 9.0:1, warn 9.4:1, danger 7.8:1, info 9.0:1. */
-      --cairn-good: #6cc79a;
-      --cairn-good-soft: #1c3229;
-      --cairn-warn: #dcb35f;
-      --cairn-warn-soft: #332914;
-      --cairn-danger: #f08c8c;
-      --cairn-danger-soft: #3a1f1f;
-      --cairn-info: #85bcdd;
-      --cairn-info-soft: #1c2c36;
+    /* Accent is a lighter tint here — a saturated indigo goes muddy on a
+       dark ground. 6.6:1 on paper, --cairn-accent-ink is 9.8:1. */
+    --cairn-accent: #7c97f0;
+    --cairn-accent-hover: #94aeff;
+    --cairn-accent-soft: #202a47;
+    --cairn-accent-ink: #aabbf7;
 
-      --cairn-border: #262d36;
-      --cairn-border-strong: #333c47;
-      --cairn-focus: #94aeff;
+    /* Status — unchanged hues, still comfortably AA against the new dark
+       paper: good 9.0:1, warn 9.4:1, danger 7.8:1, info 9.0:1. */
+    --cairn-good: #6cc79a;
+    --cairn-good-soft: #1c3229;
+    --cairn-warn: #dcb35f;
+    --cairn-warn-soft: #332914;
+    --cairn-danger: #f08c8c;
+    --cairn-danger-soft: #3a1f1f;
+    --cairn-info: #85bcdd;
+    --cairn-info-soft: #1c2c36;
 
-      --cairn-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
-      --cairn-shadow: 0 2px 10px rgb(0 0 0 / 0.45);
-      --cairn-shadow-lg: 0 8px 30px rgb(0 0 0 / 0.55);
-    }
+    --cairn-border: #262d36;
+    --cairn-border-strong: #333c47;
+    --cairn-focus: #94aeff;
+
+    --cairn-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --cairn-shadow: 0 2px 10px rgb(0 0 0 / 0.45);
+    --cairn-shadow-lg: 0 8px 30px rgb(0 0 0 / 0.55);
   }
 }
 
