@@ -4,7 +4,7 @@ import { CANONICAL_DOCS, memoryTypes } from '@cairn/domain';
 import { AppShell } from '@/components/chrome';
 import { ActionForm, SubmitButton } from '@/components/forms';
 import { ReviewQueue } from '@/components/review-queue';
-import { addMemoryManually } from '@/server/actions';
+import { addMemoryManually, removeAllWaiting } from '@/server/actions';
 import { csrfToken, requireContext } from '@/server/context';
 import { loadMemoryPage } from '@/server/views';
 
@@ -50,6 +50,28 @@ export default async function MemoryPage({
           </Link>
         ))}
       </nav>
+
+      {/* Only on the waiting list, and only when there is a backlog worth the
+          word "all". Per-source removal stays the normal way to turn something
+          down; this exists for the case that per-source removal cannot
+          reasonably serve — a first sync that left more sources than anyone
+          will click through. */}
+      {filter === 'proposed' && (counts.proposed ?? 0) > 0 ? (
+        <ActionForm
+          action={removeAllWaiting}
+          csrf={csrf}
+          hidden={{ projectId: context.project.id }}
+          successTone="info"
+        >
+          <p className="cairn-card__description" style={{ marginTop: 0 }}>
+            Cleared in one step, and reversible from History. Saved memory and disagreements are
+            left alone.
+          </p>
+          <SubmitButton tone="secondary" busyLabel="Removing…">
+            Remove all {counts.proposed} waiting
+          </SubmitButton>
+        </ActionForm>
+      ) : null}
 
       {cards.length === 0 ? (
         <EmptyState

@@ -575,6 +575,77 @@ export async function removeAllFromSource(
   });
 }
 
+/**
+ * Removing everything still waiting, in one request.
+ *
+ * `removeAllFromSource` is the right tool when one newsletter yielded a handful
+ * of things nobody wants. It is the wrong tool when a first sync of a mailbox
+ * left a backlog spread across twenty-odd sources: clearing that meant twenty
+ * separate decisions about mail the person had already decided they did not
+ * care about, and the per-source grouping stopped being a convenience and
+ * became the obstacle.
+ *
+ * Deliberately not filtered to a source, and deliberately reading the ids
+ * server-side rather than from the form: the page only ever renders the first
+ * page of proposals, so a form carrying hidden ids could only ever clear what
+ * happened to be on screen — which is exactly the trap that made this feel
+ * broken when the backlog was larger than one screen.
+ *
+ * Conflicted items are left alone. A disagreement is a question the person has
+ * not answered yet, not a thing they have ignored, and silently discarding one
+ * side of it would destroy the only signal that the contradiction existed.
+ */
+export async function removeAllWaiting(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  return guard(async () => {
+    await assertCsrf(formData);
+    const context = await requireContext();
+    const project = await resolveProject(context, String(formData.get('projectId') ?? ''));
+
+    const crypto = await context.services.keyring.get(context.actor.workspaceId);
+    const waiting = await withTenant(context.services.handle, context.actor, (tx) =>
+      memoryRepo.listMemoryItems(tx, crypto, {
+        workspaceId: context.actor.workspaceId,
+        projectId: project.id,
+        statuses: ['proposed'],
+      }),
+    );
+    if (waiting.length === 0) return { error: 'Nothing is waiting.' };
+
+    let removed = 0;
+    let firstError: string | null = null;
+    for (const item of waiting) {
+      try {
+        await rejectMemoryItem(context.services, context.actor, item.id);
+        removed += 1;
+      } catch (error) {
+        if (isRedirectError(error)) throw error;
+        firstError =
+          error instanceof DomainError
+            ? error.userMessage
+            : 'Something went wrong for one of them.';
+      }
+    }
+    revalidateMemoryViews();
+
+    if (removed === 0) {
+      return { error: firstError ?? 'Could not remove any of them. Please try again.' };
+    }
+    const skipped = waiting.length - removed;
+    return {
+      ok: true,
+      message:
+        skipped === 0
+          ? `Removed all ${removed} waiting. Reversible — put any of them back from History.`
+          : `Removed ${removed} of ${waiting.length} waiting (${skipped} could not be removed${
+              firstError ? `: ${firstError}` : ''
+            }). Reversible — put any of them back from History.`,
+    };
+  });
+}
+
 export async function removeMemory(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   return guard(async () => {
     await assertCsrf(formData);
