@@ -6,6 +6,26 @@ import { Wordmark } from '@/components/chrome';
 export const metadata = { title: 'Privacy' };
 
 /**
+ * Rendered per request so the Content Security Policy can actually admit it.
+ *
+ * `proxy.ts` mints a fresh nonce per request and pairs it with `strict-dynamic`,
+ * which by design turns off host allow-listing — so `'self'` stops rescuing
+ * anything and a script is admitted only by nonce. A prerendered page carries
+ * whatever nonce existed at build time, which can never match the header on a
+ * later request, so every chunk and the framework's inline bootstrap were
+ * blocked: this was the one page in the product shipping with no JavaScript at
+ * all (19 CSP violations on a live load, 2026-08-07).
+ *
+ * There is no policy-side fix that keeps the page static without weakening the
+ * policy for every other route — the alternatives are hashing the framework's
+ * inline bootstrap, which changes on every build, or `unsafe-inline`, which is
+ * the exact thing the nonce exists to avoid. Rendering this page per request
+ * costs a few milliseconds on a page nobody visits twice, and it puts /privacy
+ * on the same footing as every other page here.
+ */
+export const dynamic = 'force-dynamic';
+
+/**
  * The public privacy policy.
  *
  * Deliberately outside any auth check — Google's OAuth verification review
