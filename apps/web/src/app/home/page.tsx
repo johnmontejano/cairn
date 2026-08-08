@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { CANONICAL_DOCS } from '@cairn/domain';
-import { Badge, Callout, Card, EmptyState, ProgressSteps } from '@cairn/ui';
+import { Badge, Callout, EmptyState, ProgressSteps } from '@cairn/ui';
 import { AppShell } from '@/components/chrome';
 import { RecentDecisions } from '@/components/recent-decisions';
 import { ReviewQueue } from '@/components/review-queue';
@@ -138,33 +138,6 @@ export default async function HomePage() {
         </p>
       )}
 
-      {/* Above everything, because "what do I do next" and "is it working" are
-          the two questions this page exists to answer, and both used to be
-          several screens down — behind a review queue that could run to
-          dozens of cards. The checklist removes itself once nothing is left. */}
-      <SetupChecklist
-        steps={homeChecklist({
-          hasWorkingAi: liveClients.some((c) => c.lastUsedAt !== null),
-          hasAnyAi: liveClients.length > 0,
-          sourceCount: overview.sourceCount,
-          approvedCount: overview.approvedCount,
-        })}
-      />
-
-      <section aria-labelledby="your-tools" style={{ marginBottom: '2.5rem' }}>
-        <div className="cairn-row" style={{ justifyContent: 'space-between' }}>
-          <h2 id="your-tools" className="cairn-section-title" style={{ marginBottom: '0.75rem' }}>
-            Your AI tools
-          </h2>
-          {liveClients.length > 0 ? (
-            <p className="cairn-meta">
-              <Link href="/connections">Connect another</Link>
-            </p>
-          ) : null}
-        </div>
-        <ConnectionTiles clients={connections.clients} now={now} />
-      </section>
-
       {/* A progress bar says work is happening. It does not say what that means
           for an answer asked right now, which is the thing worth knowing: a
           question asked mid-import returns less than it will in a minute, and
@@ -207,46 +180,134 @@ export default async function HomePage() {
         </div>
       ) : null}
 
-      <section aria-labelledby="what-i-know" style={{ marginBottom: '2.5rem' }}>
-        <h2 id="what-i-know" className="cairn-section-title">
-          What I know
-        </h2>
-        {overview.approvedByType.length === 0 ? (
-          <EmptyState title="Nothing saved yet">
-            Once you keep something below, it appears here and becomes available to any AI tool you
-            connect.
-          </EmptyState>
-        ) : (
-          <div className="cairn-grid">
-            {overview.approvedByType.map((group) => (
-              <Card key={group.type}>
-                <div className="cairn-row" style={{ justifyContent: 'space-between' }}>
-                  <h3 className="cairn-card__title">{group.label}</h3>
-                  <Badge tone="neutral">{group.count}</Badge>
-                </div>
-                <ul
-                  style={{
-                    margin: '0.625rem 0 0',
-                    paddingLeft: '1.125rem',
-                    color: 'var(--cairn-ink-muted)',
-                  }}
-                >
-                  {group.samples.map((sample) => (
-                    <li key={sample}>{sample}</li>
-                  ))}
-                </ul>
-              </Card>
-            ))}
+      {/* The dashboard. Three panels, deliberately unequal.
+          What Cairn knows is the one thing here worth reading rather than
+          glancing at, so it takes the tall column; the two on the right answer
+          "is it working" and "what is left to do", which are both a glance. */}
+      <div className="cairn-dash">
+        <section className="cairn-panel cairn-dash__tall" aria-labelledby="what-i-know">
+          <div className="cairn-panel__head">
+            <h2 id="what-i-know" className="cairn-panel__title">
+              What I know
+            </h2>
+            {overview.approvedByType.length > 0 ? (
+              <Link className="cairn-meta" href="/memory?filter=approved">
+                All of it
+              </Link>
+            ) : null}
           </div>
-        )}
-        {overview.latestVersion ? (
-          <p className="cairn-meta" style={{ marginTop: '0.875rem' }}>
-            Last change: {overview.latestVersion.reason} by {overview.latestVersion.authorLabel} on{' '}
-            {overview.latestVersion.createdAt.toISOString().slice(0, 10)} ·{' '}
-            <Link href="/history">See history</Link>
+          {overview.approvedByType.length === 0 ? (
+            <EmptyState title="Nothing saved yet">
+              Once you keep something below, it appears here and becomes available to any AI tool
+              you connect.
+            </EmptyState>
+          ) : (
+            <div className="cairn-stack cairn-stack--md">
+              {overview.approvedByType.map((group) => (
+                <div key={group.type}>
+                  <div className="cairn-row" style={{ justifyContent: 'space-between' }}>
+                    <h3 className="cairn-card__title">{group.label}</h3>
+                    <Badge tone="neutral">{group.count}</Badge>
+                  </div>
+                  <ul
+                    style={{
+                      margin: '0.5rem 0 0',
+                      paddingLeft: '1.125rem',
+                      color: 'var(--cairn-ink-muted)',
+                    }}
+                  >
+                    {group.samples.map((sample) => (
+                      <li key={sample}>{sample}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+          {overview.latestVersion ? (
+            <p className="cairn-meta" style={{ marginTop: '1rem' }}>
+              Last change: {overview.latestVersion.reason} by {overview.latestVersion.authorLabel}{' '}
+              on {overview.latestVersion.createdAt.toISOString().slice(0, 10)} ·{' '}
+              <Link href="/history">See history</Link>
+            </p>
+          ) : null}
+        </section>
+
+        {/* The only accented surface on the page. Two real numbers, not a
+            score: what is saved, and how many places it came from. */}
+        <section className="cairn-panel cairn-panel--figure" aria-labelledby="whats-in-here">
+          <div className="cairn-panel__head">
+            <h2 id="whats-in-here" className="cairn-panel__title">
+              In your memory
+            </h2>
+          </div>
+          <div className="cairn-figure__row">
+            <p className="cairn-figure">
+              {overview.approvedCount}
+              <span className="cairn-figure__unit">
+                thing{overview.approvedCount === 1 ? '' : 's'} saved
+              </span>
+            </p>
+            <p className="cairn-figure">
+              {overview.sourceCount}
+              <span className="cairn-figure__unit">
+                source{overview.sourceCount === 1 ? '' : 's'} read
+              </span>
+            </p>
+          </div>
+        </section>
+
+        {/* "What do I do next" was several screens down, behind a review queue
+            that can run to dozens of cards. It removes itself once nothing is
+            left to do. */}
+        <section className="cairn-panel" aria-labelledby="next-steps">
+          <div className="cairn-panel__head">
+            <h2 id="next-steps" className="cairn-panel__title">
+              Getting set up
+            </h2>
+          </div>
+          <SetupChecklist
+            steps={homeChecklist({
+              hasWorkingAi: liveClients.some((c) => c.lastUsedAt !== null),
+              hasAnyAi: liveClients.length > 0,
+              sourceCount: overview.sourceCount,
+              approvedCount: overview.approvedCount,
+            })}
+          />
+        </section>
+      </div>
+
+      {/* What reads this memory, and what feeds it — the same question from
+          opposite ends, so they sit side by side. */}
+      <div className="cairn-dash__split" style={{ marginBottom: '2.5rem' }}>
+        <section className="cairn-panel" aria-labelledby="your-tools">
+          <div className="cairn-panel__head">
+            <h2 id="your-tools" className="cairn-panel__title">
+              Your AI tools
+            </h2>
+            <Link className="cairn-meta" href="/connections">
+              {liveClients.length > 0 ? 'Connect another' : 'Connect one'}
+            </Link>
+          </div>
+          <ConnectionTiles clients={connections.clients} now={now} />
+        </section>
+
+        <section className="cairn-panel" aria-labelledby="where-from">
+          <div className="cairn-panel__head">
+            <h2 id="where-from" className="cairn-panel__title">
+              Where it comes from
+            </h2>
+            <Link className="cairn-meta" href="/sources">
+              Manage
+            </Link>
+          </div>
+          <p style={{ margin: 0, color: 'var(--cairn-ink-muted)' }}>
+            {overview.sourceCount === 0
+              ? 'Nothing is connected yet. Paste a note, upload a file, or connect an app you already use.'
+              : `Reading from ${overview.sourceCount} place${overview.sourceCount === 1 ? '' : 's'}. Everything is read-only — nothing is ever changed where it came from.`}
           </p>
-        ) : null}
-      </section>
+        </section>
+      </div>
 
       <RecentDecisions decisions={overview.recentlyDecided} csrf={csrf} returnTo="/home" />
 

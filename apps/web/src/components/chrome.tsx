@@ -98,12 +98,16 @@ export async function AppShell({
   return (
     <div className="cairn-shell">
       <SkipLink />
+      {/* Three groups rather than one bar: the brand, where you can go, and who
+          you are. They share one shape so they read as a single system split in
+          three. The markup is still one <header> with one <nav> in it — the
+          split is visual only, and a screen reader hears one set of sections. */}
       <header className="cairn-header">
         <div className="cairn-header__inner">
-          <Link href="/home" aria-label={`${PRODUCT.name} home`}>
+          <Link href="/home" className="cairn-header__pill" aria-label={`${PRODUCT.name} home`}>
             <Wordmark />
           </Link>
-          <nav aria-label="Sections" className="cairn-nav">
+          <nav aria-label="Sections" className="cairn-header__pill cairn-header__pill--nav">
             {NAV.map((item) => (
               <Link
                 key={item.href}
@@ -115,7 +119,7 @@ export async function AppShell({
               </Link>
             ))}
           </nav>
-          <div className="cairn-header__actions">
+          <div className="cairn-header__pill cairn-header__actions">
             {status && status.runningJobs > 0 ? (
               <span className="cairn-shell-status" role="status">
                 <span className="cairn-shell-status__dot" aria-hidden="true" />

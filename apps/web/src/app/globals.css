@@ -63,22 +63,190 @@ a:hover {
   flex-direction: column;
 }
 
+/**
+ * The chrome floats rather than banding the window.
+ *
+ * A full-width bar with a bottom rule reads as an application frame wrapped
+ * around a document. Three separated groups sitting on the page — brand, the
+ * routes, the account — read as controls belonging to the same surface as the
+ * content, which is what they are. It also stops the header being the widest,
+ * heaviest element on every screen.
+ *
+ * Deliberately not sticky. These pages are short, and a floating bar that
+ * follows you down a dashboard covers the thing you scrolled to.
+ */
 .cairn-header {
-  border-bottom: 1px solid var(--cairn-border);
-  background: var(--cairn-surface);
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 20;
+  padding-block: 1.5rem 0;
 }
 .cairn-header__inner {
-  max-width: 68rem;
+  max-width: 75rem;
   margin: 0 auto;
-  padding: 0.75rem 1.25rem;
+  padding-inline: 1.25rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+/* All three groups share one shape, so they read as one system split in three
+   rather than three unrelated widgets. */
+.cairn-header__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 3rem;
+  padding-inline: 0.875rem;
+  border: 1px solid var(--cairn-border);
+  border-radius: 999px;
+  background: var(--cairn-surface);
+}
+.cairn-header__pill--nav {
+  padding-inline: 0.375rem;
+  gap: 0;
+}
+
+/**
+ * The dashboard.
+ *
+ * `/home` used to be five full-width sections stacked down the page, which
+ * gave every one of them the same weight and meant the first screen was
+ * mostly setup checklist. The things a person actually returns for — what
+ * Cairn knows, and whether anything is reading it — sat below the fold.
+ *
+ * Asymmetric on purpose: the identity panel is the one piece worth reading in
+ * full, so it gets the tall left column, and the smaller right column carries
+ * the two things that are glanceable rather than readable. Below them the two
+ * connection grids sit side by side because they answer the same question
+ * from opposite ends — what feeds memory, and what reads it.
+ *
+ * `minmax(0, …)` on both tracks because a grid child's default `min-width:
+ * auto` lets long unbroken content (a source name, a command) push the track
+ * wider than its share and take the page with it.
+ */
+.cairn-dash {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  align-items: start;
+}
+/* Spans both rows of the right column and stretches to their combined height,
+   so the row bottoms line up. Without the stretch the grid's `align-items:
+   start` leaves the tall panel short and the composition reads as two columns
+   that happen to start together rather than one block. */
+.cairn-dash__tall {
+  grid-row: span 2;
+  align-self: stretch;
+}
+.cairn-dash__split {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  margin-top: 1rem;
+}
+
+/* One column below the point where two columns stop being two columns and
+   start being two narrow strips. */
+@media (max-width: 60rem) {
+  .cairn-dash,
+  .cairn-dash__split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cairn-dash__tall {
+    grid-row: auto;
+  }
+}
+
+/* The panel. Flatter than a card: on a dark ground a border carries the edge,
+   so the fill barely has to lift off the canvas at all. */
+.cairn-panel {
+  border: 1px solid var(--cairn-border);
+  border-radius: var(--cairn-radius-lg);
+  background: var(--cairn-surface);
+  padding: 1.25rem;
+  min-width: 0;
+}
+.cairn-panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.cairn-panel__title {
+  font-family: var(--cairn-font-heading);
+  font-size: var(--cairn-text-md);
+  font-weight: 600;
+  margin: 0;
+}
+
+/* The one panel allowed to raise its voice, and only ever one — an accent
+   that appears twice is not an accent. */
+.cairn-panel--figure {
+  border-color: var(--cairn-accent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--cairn-accent) 7%, var(--cairn-surface)),
+    var(--cairn-surface)
+  );
+}
+.cairn-figure {
+  font-family: var(--cairn-font-heading);
+  font-size: 2.75rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--cairn-accent);
+  margin: 0;
+}
+.cairn-figure__unit {
+  display: block;
+  margin-top: 0.375rem;
+  font-size: var(--cairn-text-sm);
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--cairn-ink-muted);
+}
+.cairn-figure__row {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+/* Connection tiles. A fixed-width auto-fill rather than a fixed column count,
+   so the same grid holds two connectors or twenty without either looking like
+   a mistake. */
+.cairn-tiles {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+}
+.cairn-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: 5rem;
+  padding: 0.625rem 0.375rem;
+  border: 1px solid var(--cairn-border);
+  border-radius: var(--cairn-radius);
+  background: var(--cairn-surface-sunken);
+  text-align: center;
+  font-size: var(--cairn-text-xs);
+  color: var(--cairn-ink-muted);
+  overflow-wrap: anywhere;
+}
+/* An empty slot is dashed and quieter, so "nothing here yet" is legible as a
+   state rather than as a tile that failed to load. */
+.cairn-tile--empty {
+  border-style: dashed;
+  color: var(--cairn-ink-subtle);
+}
+.cairn-tile__name {
+  color: var(--cairn-ink);
 }
 .cairn-wordmark {
   display: inline-flex;

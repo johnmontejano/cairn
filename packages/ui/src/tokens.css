@@ -118,12 +118,16 @@
     --cairn-ink-muted: #a9b4bf;
     --cairn-ink-subtle: #7c8892;
 
-    /* Accent is a lighter tint here — a saturated indigo goes muddy on a
-       dark ground. 6.6:1 on paper, --cairn-accent-ink is 9.8:1. */
-    --cairn-accent: #7c97f0;
-    --cairn-accent-hover: #94aeff;
-    --cairn-accent-soft: #202a47;
-    --cairn-accent-ink: #aabbf7;
+    /* Warm amber, at the owner's direction, replacing the indigo this used to
+       carry. It earns its keep by being rare: one accented panel per screen,
+       and the buttons. Checked against this ground — 10.1:1 for the accent and
+       11.4:1 for -ink, both well past AA, which a saturated amber on near-black
+       comfortably clears. Dark ink goes *on* the accent when it is a fill,
+       since amber is far too light to carry white text. */
+    --cairn-accent: #f0b429;
+    --cairn-accent-hover: #ffc94d;
+    --cairn-accent-soft: #33280f;
+    --cairn-accent-ink: #f6c85a;
 
     /* Status — unchanged hues, still comfortably AA against the new dark
        paper: good 9.0:1, warn 9.4:1, danger 7.8:1, info 9.0:1. */
