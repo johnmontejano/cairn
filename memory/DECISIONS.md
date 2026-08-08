@@ -93,3 +93,35 @@ creating a new one, and deploy the website to Vercel Hobby with
 **Reasoning:** The project already existed and was empty, so reusing it creates
 no new infrastructure and keeps the single-user deployment at $0. Approved by the
 user on 2026-07-28 after the cost was confirmed at $0/month.
+
+## 2026-08-07 — Coordinate AI tools through review-gated shared memory
+
+**Decision:** Claude, Claude Code, Codex, and supported ChatGPT workspaces share
+approved Cairn memory. They do not message one another directly and Cairn does
+not silently ingest every private conversation. An AI may propose a durable
+update, but another AI cannot retrieve it until a person keeps it.
+
+**Reasoning:** This gives the requested cross-tool continuity without turning a
+memory product into transcript surveillance or allowing one compromised client
+to write instructions for every other client.
+
+## 2026-08-07 — Make four AI tools the primary onboarding surface
+
+**Decision:** First-run AI setup centers Claude, Claude Code, Codex, and ChatGPT.
+Other MCP clients remain available under secondary setup. ChatGPT is labelled
+plan-dependent and ordinary ChatGPT chat is not promised local Codex memory.
+
+**Reasoning:** A short, recognizable choice reduces onboarding decisions while
+preserving honest support boundaries that vary by ChatGPT plan and workspace.
+
+## 2026-08-07 — Apply disclosure grants to every AI-facing whole-memory view
+
+**Decision:** Canonical resources, identity summaries, search, single-item
+reads, and asynchronous deep answers all enforce the connection's project,
+memory-type, sensitivity, and visibility grants. A person's manual website
+identity override is not sent to AI clients because it cannot be safely split
+by those item-level grants.
+
+**Reasoning:** A filtered search surface is not a security boundary if a client
+can retrieve the same private text through a whole-document resource, summary,
+or worker running with system permissions.

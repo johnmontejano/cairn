@@ -1,7 +1,7 @@
 /*
  * Cairn's visual system.
  *
- * A cool, working-tool ground with one deliberate indigo-blue accent, rather
+ * A cool, working-tool ground with one deliberate amber accent, rather
  * than the warm cream-and-clay pairing that reads as machine-generated
  * default in this category. The restraint is still deliberate: this product
  * asks people to read and judge their own words, so the interface should
@@ -24,11 +24,11 @@
     --cairn-ink-muted: #4b5560;
     --cairn-ink-subtle: #5f6a75;
 
-    /* Accent — indigo. 5.8:1 on paper, --cairn-accent-ink is 9.0:1 */
-    --cairn-accent: #3454d1;
-    --cairn-accent-hover: #2a44ad;
-    --cairn-accent-soft: #e7ecfb;
-    --cairn-accent-ink: #24399e;
+    /* Accent — amber/ochre. 5.4:1 on paper, --cairn-accent-ink is 8.3:1. */
+    --cairn-accent: #8a5c00;
+    --cairn-accent-hover: #704b00;
+    --cairn-accent-soft: #fff1c7;
+    --cairn-accent-ink: #654200;
 
     /* Status — same hue families as before, re-checked against the new
        paper: good 6.0:1, warn 6.3:1, danger 7.1:1, info 6.8:1. */
@@ -43,7 +43,7 @@
 
     --cairn-border: #d7dee4;
     --cairn-border-strong: #b9c3cc;
-    --cairn-focus: #2a44ad;
+    --cairn-focus: #8a5c00;
 
     --cairn-radius-sm: 6px;
     --cairn-radius: 10px;
@@ -76,9 +76,8 @@
      * It used to be `--cairn-font-serif`, which is a *fallback stack*, not a
      * chosen face: on every machine this ships to, that resolves to Georgia,
      * so the product's headings were a system serif nobody picked. The
-     * landing is a different case and keeps its own display face —
-     * `--cairn-font-display-face` (Spectral) is the one deliberate voice on
-     * the page, and it stays scoped there.
+     * landing is a different case and keeps its own system-serif display
+     * register, scoped there and free of a build-time font-host dependency.
      *
      * Past sign-in the interface should recede, which is what the quiet
      * system stack is for. Overriding this variable is how a licensed face
@@ -118,12 +117,16 @@
     --cairn-ink-muted: #a9b4bf;
     --cairn-ink-subtle: #7c8892;
 
-    /* Accent is a lighter tint here — a saturated indigo goes muddy on a
-       dark ground. 6.6:1 on paper, --cairn-accent-ink is 9.8:1. */
-    --cairn-accent: #7c97f0;
-    --cairn-accent-hover: #94aeff;
-    --cairn-accent-soft: #202a47;
-    --cairn-accent-ink: #aabbf7;
+    /* Warm amber, at the owner's direction, replacing the indigo this used to
+       carry. It earns its keep by being rare: one accented panel per screen,
+       and the buttons. Checked against this ground — 10.1:1 for the accent and
+       11.4:1 for -ink, both well past AA, which a saturated amber on near-black
+       comfortably clears. Dark ink goes *on* the accent when it is a fill,
+       since amber is far too light to carry white text. */
+    --cairn-accent: #f0b429;
+    --cairn-accent-hover: #ffc94d;
+    --cairn-accent-soft: #33280f;
+    --cairn-accent-ink: #f6c85a;
 
     /* Status — unchanged hues, still comfortably AA against the new dark
        paper: good 9.0:1, warn 9.4:1, danger 7.8:1, info 9.0:1. */

@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { EXAMPLE_DOCUMENT, EXAMPLE_DOCUMENT_TITLE } from '@cairn/connectors';
 import { memoryRepo, withTenant } from '@cairn/db';
 import { CANONICAL_DOCS, parseCanonicalDocument } from '@cairn/domain';
-import { approveMemoryItem, submitSource } from '@cairn/ingestion';
+import { approveMemoryItem, rejectMemoryItem, submitSource } from '@cairn/ingestion';
 import { searchMemory } from '@cairn/search';
 import { PostgresMemoryVault } from '@cairn/vault';
 import { createTestWorld, type TestWorld } from '@cairn/testing';
@@ -172,5 +172,40 @@ describe('the complete journey from paste to cited answer', () => {
     });
     expect(again.deduplicated).toBe(true);
     expect(again.jobId).toBeNull();
+  });
+
+  it('rebuilds canonical Markdown when an approved memory is removed', async () => {
+    const crypto = await world.services.keyring.get(world.actor.workspaceId);
+    const [decision] = await withTenant(world.services.handle, world.actor, (tx) =>
+      memoryRepo.listMemoryItems(tx, crypto, {
+        workspaceId: world.actor.workspaceId,
+        projectId: world.project.id,
+        statuses: ['approved'],
+        types: ['decision'],
+      }),
+    );
+    expect(decision).toBeDefined();
+
+    const vault = world.services.vault as PostgresMemoryVault;
+    const before = await vault.head({ actor: world.actor, projectId: world.project.id });
+    const beforeMarkdown = await vault.read({
+      actor: world.actor,
+      projectId: world.project.id,
+      path: CANONICAL_DOCS.decision.path,
+    });
+    expect(parseCanonicalDocument(beforeMarkdown!).map((item) => item.id)).toContain(decision!.id);
+
+    await rejectMemoryItem(world.services, world.actor, decision!.id);
+
+    const after = await vault.head({ actor: world.actor, projectId: world.project.id });
+    const afterMarkdown = await vault.read({
+      actor: world.actor,
+      projectId: world.project.id,
+      path: CANONICAL_DOCS.decision.path,
+    });
+    expect(after?.id).not.toBe(before?.id);
+    expect(parseCanonicalDocument(afterMarkdown!).map((item) => item.id)).not.toContain(
+      decision!.id,
+    );
   });
 });

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { and, eq, inArray, ne } from 'drizzle-orm';
+import { and, eq, inArray, isNull, ne } from 'drizzle-orm';
 import { contentHash } from '@cairn/crypto';
 import {
   auditRepo,
@@ -13,6 +13,10 @@ import {
 } from '@cairn/db';
 import {
   type ActorContext,
+  type ClientPrincipal,
+  type McpScope,
+  type MemoryType,
+  type SensitivityLevel,
   type Job,
   type SourceProvider,
   type Uuid,
@@ -462,9 +466,52 @@ async function handleDeepQuery(services: CairnServices, job: Job): Promise<JobRe
   );
   if (!row) throw new ValidationError(`Deep query ${deepQueryId} no longer exists`);
 
-  const question = crypto.decryptContent(row.encryptedQuestion, 'deep_query', row.id);
-
   try {
+    const [clientRow] = row.askedBy
+      ? await withTenant(services.handle, actor, (tx) =>
+          tx
+            .select()
+            .from(schema.mcpClients)
+            .where(
+              and(
+                eq(schema.mcpClients.workspaceId, job.workspaceId),
+                eq(schema.mcpClients.id, row.askedBy!),
+                isNull(schema.mcpClients.revokedAt),
+              ),
+            )
+            .limit(1),
+        )
+      : [];
+    if (!clientRow) {
+      throw new ValidationError(
+        `Deep query ${deepQueryId} has no active originating connection`,
+        'That connection is no longer authorized. Ask the question again from an active connection.',
+      );
+    }
+
+    const client: ClientPrincipal = {
+      id: clientRow.id,
+      name: clientRow.name,
+      scopes: clientRow.scopes as McpScope[],
+      projectIds: clientRow.projectIds,
+      memoryTypes: clientRow.memoryTypes as MemoryType[] | null,
+      maxSensitivity: clientRow.maxSensitivity as SensitivityLevel,
+    };
+    const queryActor: ActorContext = {
+      workspaceId: job.workspaceId,
+      userId: null,
+      role: 'viewer',
+      client,
+    };
+    if (row.projectId && client.projectIds && !client.projectIds.includes(row.projectId)) {
+      throw new ValidationError(
+        `Deep query ${deepQueryId} targets a project outside the originating grant`,
+        'That connection is not authorized for the requested project.',
+      );
+    }
+
+    const question = crypto.decryptContent(row.encryptedQuestion, 'deep_query', row.id);
+
     await withTenant(services.handle, actor, (tx) =>
       tx
         .update(schema.deepQueries)
@@ -477,8 +524,8 @@ async function handleDeepQuery(services: CairnServices, job: Job): Promise<JobRe
         ),
     );
 
-    const passages = await withTenant(services.handle, actor, (tx) =>
-      searchMemory({ tx, crypto, embedder: services.embedder }, actor, {
+    const passages = await withTenant(services.handle, queryActor, (tx) =>
+      searchMemory({ tx, crypto, embedder: services.embedder }, queryActor, {
         query: question,
         projectId: row.projectId ?? undefined,
         // Wider than the fast path on purpose: synthesis is the point here, and
@@ -686,6 +733,11 @@ export async function approveMemoryItem(
   const crypto = await services.keyring.get(actor.workspaceId);
 
   return withTenant(services.handle, actor, async (tx) => {
+    const item = await memoryRepo.getMemoryItem(tx, crypto, actor.workspaceId, input.memoryItemId);
+    if (!item) throw new ValidationError('Memory item does not exist');
+    if (item.projectId !== input.projectId) {
+      throw new ValidationError('Memory item does not belong to the requested project');
+    }
     const evidenceCount = await memoryRepo.countEvidence(tx, actor.workspaceId, input.memoryItemId);
     assertApprovable(evidenceCount);
 
@@ -700,12 +752,17 @@ export async function approveMemoryItem(
         ),
       );
 
-    const item = await memoryRepo.getMemoryItem(tx, crypto, actor.workspaceId, input.memoryItemId);
-    if (item) await indexMemoryItems(tx, crypto, services.embedder, [item]);
+    const approvedItem = await memoryRepo.getMemoryItem(
+      tx,
+      crypto,
+      actor.workspaceId,
+      input.memoryItemId,
+    );
+    if (approvedItem) await indexMemoryItems(tx, crypto, services.embedder, [approvedItem]);
 
     const { version } = await commitCanonicalMarkdown(tx, crypto, services.vault, {
       actor,
-      projectId: input.projectId,
+      projectId: item.projectId,
       reason: 'Approved a memory',
       authorLabel: input.authorLabel,
       provenance: { kind: 'user_approval', memoryItemIds: [input.memoryItemId] },
@@ -728,7 +785,11 @@ export async function rejectMemoryItem(
   actor: ActorContext,
   memoryItemId: Uuid,
 ): Promise<void> {
+  const crypto = await services.keyring.get(actor.workspaceId);
   await withTenant(services.handle, actor, async (tx) => {
+    const item = await memoryRepo.getMemoryItem(tx, crypto, actor.workspaceId, memoryItemId);
+    if (!item) return;
+    const wasApproved = item.status === 'approved';
     await memoryRepo.softDeleteMemoryItem(tx, actor.workspaceId, memoryItemId);
     await tx
       .update(schema.memoryProposals)
@@ -739,10 +800,19 @@ export async function rejectMemoryItem(
           eq(schema.memoryProposals.memoryItemId, memoryItemId),
         ),
       );
+    if (wasApproved) {
+      await commitCanonicalMarkdown(tx, crypto, services.vault, {
+        actor,
+        projectId: item.projectId,
+        reason: 'Removed a memory',
+        authorLabel: actor.userId ? 'Person' : 'System',
+        provenance: { kind: 'user_edit', memoryItemIds: [memoryItemId], note: 'Memory removed' },
+      });
+    }
     await auditRepo.recordAudit(tx, {
       workspaceId: actor.workspaceId,
       actorUserId: actor.userId,
-      action: 'memory.rejected',
+      action: wasApproved ? 'memory.removed' : 'memory.rejected',
       subjectType: 'memory_item',
       subjectId: memoryItemId,
     });

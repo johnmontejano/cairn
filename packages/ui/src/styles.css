@@ -68,20 +68,27 @@
   font-size: var(--cairn-text-md);
 }
 
+/**
+ * Dark ink on the accent fill, unconditionally.
+ *
+ * This used to be white text with the dark ink applied only under
+ * `prefers-color-scheme: dark`. Both halves of that stopped being safe: the
+ * theme is committed dark regardless of preference now, so a light-preference
+ * browser would have taken the white branch, and the accent is amber rather
+ * than indigo, so white on it lands near 1.9:1 — unreadable, and the worst
+ * place for it is the one control on the page you most want pressed.
+ */
 .cairn-button--primary {
   background: var(--cairn-accent);
-  color: #ffffff;
+  color: #10141a;
   border-color: var(--cairn-accent);
 }
 .cairn-button--primary:hover:not(:disabled) {
   background: var(--cairn-accent-hover);
   border-color: var(--cairn-accent-hover);
 }
-@media (prefers-color-scheme: dark) {
-  .cairn-button--primary {
-    /* Dark ink on the light accent tint — matches the dark --cairn-paper. */
-    color: #10141a;
-  }
+:root[data-theme='light'] .cairn-button--primary {
+  color: #ffffff;
 }
 
 .cairn-button--secondary {

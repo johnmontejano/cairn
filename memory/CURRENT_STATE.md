@@ -1,6 +1,51 @@
 # Current State
 
-Last updated: 2026-08-06
+Last updated: 2026-08-07
+
+## Four-tool onboarding and grant-safe shared memory (2026-08-08, published for review)
+
+Implemented and verified locally, then published to the review branch
+`agent/four-tool-onboarding-shared-memory`. It has not been merged or deployed.
+
+**Onboarding and product UI.** `/welcome` now puts Claude, Claude Code, Codex,
+and ChatGPT first and teaches one Choose → Approve → Remember path.
+`/connections?tool=…` keeps those four choices visible, opens one focused setup
+panel, provides one exact connection test, and moves generic clients, codes,
+addresses, and protocol material under progressive disclosure. ChatGPT is
+explicitly plan-dependent; ordinary ChatGPT chat is not presented as if it can
+read Codex's local MCP settings. The interface states the actual model: tools do
+not message one another; they coordinate through approved Cairn memory. Apps,
+Memory, AI tools, and Exports now have consistent navigation and 390px layouts
+without horizontal overflow. Landing and app use the same restrained amber
+accent. The landing no longer depends on Google Fonts during a production
+build.
+
+**Shared-memory security and lifecycle.** Search was already grant-filtered,
+but the audit found alternate paths that were not. Canonical MCP resources and
+`whoami` now use a metadata-first disclosure list before decryption, applying
+project, memory-type, sensitivity, and visibility grants. Deep queries persist
+their originating MCP client, re-apply that client's current grant in the
+worker, fail safely if it was revoked, and cannot be read by another client.
+MCP proposals now store an immutable source revision and exact evidence, remain
+invisible while proposed, and become available to other authorized tools only
+after a person approves them. Removing an approved memory rewrites canonical
+Markdown transactionally. Approval also rejects a caller-supplied project that
+does not own the item. A manual identity override remains a website/Home view;
+connected tools receive a freshly assembled grant-filtered identity instead.
+
+**Verification.** Format, lint, typecheck, production build, 214 unit tests, 27
+integration tests, 40 security tests, and 22 MCP contract tests pass. The full
+Playwright run passes 59 tests across desktop and Pixel 7 with one intentional
+desktop-only skip. New regressions cover the four-tool setup, mobile
+connections overflow, grant-filtered resources/identity, deep-query isolation,
+reviewable proposal evidence and post-approval sharing, and canonical removal.
+The production build still emits the pre-existing Next.js NFT tracing warning,
+but completes successfully.
+
+**Still requires real-vendor proof.** The protocol and OAuth path are exercised
+through the official MCP SDK, not through all four vendors against one staging
+account. Before claiming universal interoperability, run the explicit
+Claude/Claude Code/Codex/eligible-ChatGPT smoke matrix in `NEXT_STEPS.md`.
 
 ## Exports got its own page; ChatGPT's OAuth pre-flight unblocked (2026-08-06, night)
 

@@ -7,7 +7,7 @@ import { auditRepo, clientsRepo, memoryRepo, schema, withSystem, withTenant } fr
 import type { ActorContext, SensitivityLevel } from '@cairn/domain';
 import { approveMemoryItem, submitSource } from '@cairn/ingestion';
 import { McpAuthenticator, createMcpServer } from '@cairn/mcp';
-import { searchMemory } from '@cairn/search';
+import { listDisclosableMemoryItems, searchMemory } from '@cairn/search';
 import { createTestWorld, type TestWorld } from '@cairn/testing';
 
 /**
@@ -22,6 +22,7 @@ describe('the MCP server as a client sees it', () => {
   let client: Client;
   let approvedId: string;
   let sensitiveId: string;
+  let websiteOnlyId: string;
 
   async function connect(actor: ActorContext, name = 'Test assistant'): Promise<Client> {
     const server = createMcpServer({ services: world.services, actor, clientName: name });
@@ -46,6 +47,10 @@ describe('the MCP server as a client sees it', () => {
         ...overrides,
       },
     };
+  }
+
+  function toolText(result: unknown): string {
+    return JSON.stringify((result as { content?: unknown }).content ?? '');
   }
 
   beforeAll(async () => {
@@ -84,7 +89,7 @@ describe('the MCP server as a client sees it', () => {
       const item = await memoryRepo.insertMemoryItem(tx, crypto, {
         workspaceId: world.actor.workspaceId,
         projectId: world.project.id,
-        type: 'fact',
+        type: 'preference',
         status: 'approved',
         title: 'Mill Street rent',
         value: 'The confidential Mill Street rent is £2,400 a month.',
@@ -106,6 +111,41 @@ describe('the MCP server as a client sees it', () => {
       const { indexMemoryItems } = await import('@cairn/search');
       await indexMemoryItems(tx, crypto, world.services.embedder, [item]);
       return item.id;
+    });
+
+    // A website-only item is deliberately committed to the canonical vault.
+    // The MCP resource and identity views must still withhold it: the raw vault
+    // is a human/export surface, not an authorization boundary for an AI client.
+    websiteOnlyId = await withTenant(world.handle, world.actor, async (tx) => {
+      const item = await memoryRepo.insertMemoryItem(tx, crypto, {
+        workspaceId: world.actor.workspaceId,
+        projectId: world.project.id,
+        type: 'preference',
+        status: 'proposed',
+        title: 'Private tea preference',
+        value: 'The private tea preference is ORCHID BREAKFAST.',
+        topics: ['tea'],
+        sensitivity: 'normal',
+        visibility: 'website_only',
+        extractionMethod: 'user_manual',
+      });
+      const [source] = await tx.select().from(schema.sourceItems).limit(1);
+      const [revision] = await tx.select().from(schema.sourceRevisions).limit(1);
+      await memoryRepo.addEvidence(tx, crypto, {
+        workspaceId: world.actor.workspaceId,
+        memoryItemId: item.id,
+        sourceItemId: source!.id,
+        sourceRevisionId: revision!.id,
+        startOffset: 0,
+        endOffset: 10,
+        excerpt: 'tea excerpt',
+      });
+      return item.id;
+    });
+    await approveMemoryItem(world.services, world.actor, {
+      memoryItemId: websiteOnlyId,
+      projectId: world.project.id,
+      authorLabel: 'Test',
     });
 
     client = await connect(principal());
@@ -150,7 +190,15 @@ describe('the MCP server as a client sees it', () => {
     expect(MCP_PROTOCOL_REVISION).toBe('2025-11-25');
   });
 
-  it('exposes the canonical documents as resources with their version', async () => {
+  it('teaches every connected agent the shared-memory handoff loop', () => {
+    const instructions = client.getInstructions() ?? '';
+    expect(instructions).toMatch(/start of a new conversation.*whoami/i);
+    expect(instructions).toMatch(/list_recent_changes.*another AI tool/i);
+    expect(instructions).toMatch(/propose_memory_update.*other connected tools/i);
+    expect(instructions).toMatch(/other tools cannot see it until the person keeps it/i);
+  });
+
+  it('exposes grant-filtered canonical documents as resources with their source version', async () => {
     const { resources } = await client.listResources();
     expect(resources.map((r) => r.uri)).toContain(`${PRODUCT.resourceScheme}://memory/decision`);
 
@@ -158,8 +206,87 @@ describe('the MCP server as a client sees it', () => {
     const content = read.contents[0]!;
     expect(content.mimeType).toBe('text/markdown');
     expect(String((content as { text?: string }).text)).toContain('Mill Street');
+    expect(String((content as { text?: string }).text)).toContain('Planning notes');
     expect((content._meta as Record<string, unknown>).canonical_path).toBe('memory/DECISIONS.md');
-    expect((content._meta as Record<string, unknown>).memory_version_id).toBeTruthy();
+    expect((content._meta as Record<string, unknown>).source_memory_version_id).toBeTruthy();
+    expect((content._meta as Record<string, unknown>).filtered_content_hash).toMatch(/^sha256:/);
+    expect((content._meta as Record<string, unknown>).manifest_hash).toBeUndefined();
+  });
+
+  it('applies visibility, sensitivity, and memory-type grants to resources and whoami', async () => {
+    const normalResource = await client.readResource({
+      uri: `${PRODUCT.resourceScheme}://memory/preference`,
+    });
+    const normalText = String((normalResource.contents[0] as { text?: string }).text);
+    expect(normalText).not.toContain('confidential Mill Street rent');
+    expect(normalText).not.toContain('ORCHID BREAKFAST');
+
+    const normalIdentity = await client.callTool({ name: 'whoami', arguments: {} });
+    expect(toolText(normalIdentity)).not.toContain('confidential Mill Street rent');
+    expect(toolText(normalIdentity)).not.toContain('ORCHID BREAKFAST');
+
+    const sensitive = await connect(principal({ maxSensitivity: 'sensitive' }));
+    const sensitiveResource = await sensitive.readResource({
+      uri: `${PRODUCT.resourceScheme}://memory/preference`,
+    });
+    const sensitiveText = String((sensitiveResource.contents[0] as { text?: string }).text);
+    expect(sensitiveText).toContain('confidential Mill Street rent');
+    expect(sensitiveText).not.toContain('ORCHID BREAKFAST');
+    const sensitiveIdentity = await sensitive.callTool({ name: 'whoami', arguments: {} });
+    expect(toolText(sensitiveIdentity)).toContain('confidential Mill Street rent');
+    expect(toolText(sensitiveIdentity)).not.toContain('ORCHID BREAKFAST');
+    await sensitive.close();
+
+    const decisionsOnly = await connect(
+      principal({ maxSensitivity: 'restricted', memoryTypes: ['decision'] }),
+    );
+    const typeFiltered = await decisionsOnly.readResource({
+      uri: `${PRODUCT.resourceScheme}://memory/preference`,
+    });
+    const typeFilteredText = String((typeFiltered.contents[0] as { text?: string }).text);
+    expect(typeFilteredText).not.toContain('confidential Mill Street rent');
+    expect(typeFilteredText).not.toContain('ORCHID BREAKFAST');
+    await decisionsOnly.close();
+  });
+
+  it('filters grants before applying a whole-memory result limit', async () => {
+    const crypto = await world.services.keyring.get(world.actor.workspaceId);
+    const allowedId = await withTenant(world.handle, world.actor, async (tx) => {
+      const allowed = await memoryRepo.insertMemoryItem(tx, crypto, {
+        workspaceId: world.actor.workspaceId,
+        projectId: world.project.id,
+        type: 'fact',
+        status: 'approved',
+        title: 'Allowed result',
+        value: 'This result is visible to connected tools.',
+        topics: [],
+        sensitivity: 'normal',
+        visibility: 'share_with_authorized_clients',
+        extractionMethod: 'user_manual',
+      });
+      const blocked = await memoryRepo.insertMemoryItem(tx, crypto, {
+        workspaceId: world.actor.workspaceId,
+        projectId: world.project.id,
+        type: 'fact',
+        status: 'approved',
+        title: 'Newer private result',
+        value: 'This result is website-only.',
+        topics: [],
+        sensitivity: 'normal',
+        visibility: 'website_only',
+        extractionMethod: 'user_manual',
+      });
+      await tx
+        .update(schema.memoryItems)
+        .set({ updatedAt: new Date('2099-01-01T00:00:00.000Z') })
+        .where(eq(schema.memoryItems.id, blocked.id));
+      return allowed.id;
+    });
+
+    const visible = await withTenant(world.handle, world.actor, (tx) =>
+      listDisclosableMemoryItems({ tx, crypto }, principal(), { types: ['fact'], limit: 1 }),
+    );
+    expect(visible.map((item) => item.id)).toEqual([allowedId]);
   });
 
   it('returns the same results the website would, with citations', async () => {
@@ -232,6 +359,82 @@ describe('the MCP server as a client sees it', () => {
     await permitted.close();
   });
 
+  it('keeps deep answers inside the originating connection grants', async () => {
+    const crypto = await world.services.keyring.get(world.actor.workspaceId);
+    await withTenant(world.handle, world.actor, async (tx) => {
+      const item = await memoryRepo.insertMemoryItem(tx, crypto, {
+        workspaceId: world.actor.workspaceId,
+        projectId: world.project.id,
+        type: 'preference',
+        status: 'approved',
+        title: 'Quiet morning preference',
+        value: 'Quiet mornings are reserved for focused writing.',
+        topics: ['focus'],
+        sensitivity: 'normal',
+        visibility: 'share_with_authorized_clients',
+        extractionMethod: 'user_manual',
+      });
+      const [source] = await tx.select().from(schema.sourceItems).limit(1);
+      const [revision] = await tx.select().from(schema.sourceRevisions).limit(1);
+      await memoryRepo.addEvidence(tx, crypto, {
+        workspaceId: world.actor.workspaceId,
+        memoryItemId: item.id,
+        sourceItemId: source!.id,
+        sourceRevisionId: revision!.id,
+        startOffset: 0,
+        endOffset: 10,
+        excerpt: 'focus note',
+      });
+      const { indexMemoryItems } = await import('@cairn/search');
+      await indexMemoryItems(tx, crypto, world.services.embedder, [item]);
+    });
+
+    const created = await withTenant(world.handle, world.actor, (tx) =>
+      clientsRepo.createMcpClient(tx, {
+        workspaceId: world.actor.workspaceId,
+        name: 'Deep reader',
+        scopes: ['memory:read'],
+        projectIds: [world.project.id],
+        memoryTypes: ['preference'],
+        maxSensitivity: 'normal',
+      }),
+    );
+    const deepActor: ActorContext = {
+      userId: null,
+      workspaceId: world.actor.workspaceId,
+      role: 'viewer',
+      client: created.client,
+    };
+    const deepClient = await connect(deepActor, 'Deep reader');
+    const asked = await deepClient.callTool({
+      name: 'ask_deeply',
+      arguments: { question: 'What is my quiet morning preference?' },
+    });
+    const queryId = (asked.structuredContent as { query_id: string }).query_id;
+    const drained = await world.drain();
+    expect(drained.failed).toBe(0);
+
+    const answer = await deepClient.callTool({
+      name: 'read_deep_answer',
+      arguments: { query_id: queryId },
+    });
+    expect(toolText(answer)).toContain('Quiet mornings are reserved for focused writing.');
+    expect(toolText(answer)).not.toContain('£2,400');
+    expect(toolText(answer)).not.toContain('ORCHID BREAKFAST');
+
+    const otherClient = await connect(
+      principal({ id: '00000000-0000-4000-8000-00000000d33e' }),
+      'Different assistant',
+    );
+    const crossClient = await otherClient.callTool({
+      name: 'read_deep_answer',
+      arguments: { query_id: queryId },
+    });
+    expect(crossClient.structuredContent).toMatchObject({ found: false });
+    await otherClient.close();
+    await deepClient.close();
+  });
+
   it('refuses a tool the connection has no scope for', async () => {
     const readOnly = await connect(principal({ scopes: ['memory:read'] }));
     const result = await readOnly.callTool({
@@ -260,6 +463,10 @@ describe('the MCP server as a client sees it', () => {
 
   it('creates only a reviewable suggestion, never a saved memory', async () => {
     const proposer = await connect(principal({ scopes: ['memory:read', 'memory:propose'] }));
+    const observer = await connect(
+      principal({ id: '00000000-0000-4000-8000-00000000c22e' }),
+      'Second assistant',
+    );
     const result = await proposer.callTool({
       name: 'propose_memory_update',
       arguments: {
@@ -289,12 +496,22 @@ describe('the MCP server as a client sees it', () => {
         world.actor.workspaceId,
         proposal!.memoryItemId,
       );
-      return { proposal, item };
+      const evidence = await memoryRepo.listEvidence(tx, crypto, world.actor.workspaceId, [
+        proposal!.memoryItemId,
+      ]);
+      return { proposal, item, evidence: evidence.get(proposal!.memoryItemId) ?? [] };
     });
     expect(stored.proposal!.origin).toBe('mcp_client');
     expect(stored.item!.status).toBe('proposed');
-    // Until a person reviews it, a client suggestion is not shared onward.
-    expect(stored.item!.visibility).toBe('website_only');
+    // Approval, rather than a special private visibility value, is the gate.
+    // Once accepted, ordinary client grants decide who can read the memory.
+    expect(stored.item!.visibility).toBe('share_with_authorized_clients');
+    expect(stored.evidence).toHaveLength(1);
+    expect(stored.evidence[0]).toMatchObject({
+      startOffset: 0,
+      endOffset: 'Order the signage once opening hours are decided.'.length,
+      excerpt: 'Order the signage once opening hours are decided.',
+    });
 
     // And it is not retrievable, by the proposing client or any other.
     const search = await proposer.callTool({
@@ -306,7 +523,40 @@ describe('the MCP server as a client sees it', () => {
         (r) => r.memory_item_id,
       ),
     ).not.toContain(stored.item!.id);
+    const hiddenFromObserver = await observer.callTool({
+      name: 'search_memory',
+      arguments: { query: 'Order the signage' },
+    });
+    expect(
+      (
+        hiddenFromObserver.structuredContent as {
+          results: Array<{ memory_item_id: string }>;
+        }
+      ).results.map((r) => r.memory_item_id),
+    ).not.toContain(stored.item!.id);
+
+    // The immutable evidence snapshot makes the ordinary human approval path
+    // work; MCP never gets a bypass around the evidence-required invariant.
+    await expect(
+      approveMemoryItem(world.services, world.actor, {
+        memoryItemId: stored.item!.id,
+        projectId: world.project.id,
+        authorLabel: 'Test Person',
+      }),
+    ).resolves.toMatchObject({ versionId: expect.any(String) });
+    const sharedAfterApproval = await observer.callTool({
+      name: 'search_memory',
+      arguments: { query: 'Order the signage' },
+    });
+    expect(
+      (
+        sharedAfterApproval.structuredContent as {
+          results: Array<{ memory_item_id: string }>;
+        }
+      ).results.map((r) => r.memory_item_id),
+    ).toContain(stored.item!.id);
     await proposer.close();
+    await observer.close();
   });
 
   it('lists recent changes with their fingerprints', async () => {

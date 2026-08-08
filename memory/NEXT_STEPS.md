@@ -44,6 +44,22 @@ credential from the user; none of it should be done without explicit approval.
 
 ## Immediate
 
+0aaa. **Run the four-vendor interoperability matrix against staging before
+claiming universal support.** Seed one approved memory; connect Claude, Claude
+Code, Codex, and an eligible ChatGPT workspace as independent OAuth clients;
+call `whoami`, `search_memory`, and `get_memory_item`; assert the same workspace,
+memory item id, canonical version, and citations. Propose from one tool, prove
+the other three see nothing until human approval, then prove all authorized
+tools see it. Revoke one client and prove only it loses access. The generic MCP
+SDK and OAuth flows pass locally, but they cannot catch vendor-specific setup or
+discovery behavior.
+
+0aab. **Do not deploy the 2026-08-07 redesign implicitly.** The onboarding,
+backend hardening, and offline-safe font change are implemented, verified, and
+published for review on `agent/four-tool-onboarding-shared-memory`. This does
+not authorize merging, database mutation, or deployment. Review the audit and
+pull request first, then choose the deployment window.
+
 0aa. ~~**Have the owner actually run `codex mcp add`.**~~ Happened. The
 production `mcp_clients` table shows a client named `Codex` created and last
 used on 2026-08-06, alongside the `Claude Code live test` client from

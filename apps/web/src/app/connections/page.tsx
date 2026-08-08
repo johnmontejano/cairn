@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Badge, Callout, Card, Disclosure, EmptyState, LinkButton } from '@cairn/ui';
 import { MCP_PROTOCOL_REVISION, PRODUCT } from '@cairn/config';
 import { CANONICAL_DOCS, memoryTypes } from '@cairn/domain';
@@ -32,10 +33,12 @@ export const dynamic = 'force-dynamic';
  * it plainly costs nothing and is true.
  */
 interface McpClientCard {
+  id: string;
   name: string;
   /** One sentence saying literally where the copied thing goes. */
   how: string;
   supported: boolean;
+  availability?: 'works' | 'plan' | 'not-yet';
   copy?: { value: string; label: string };
   /** One line of small print under the thing to copy. */
   note?: string;
@@ -63,31 +66,43 @@ function mcpClients(signInMode: boolean, mcpUrl: string): ReadonlyArray<McpClien
   if (!signInMode) {
     return [
       {
+        id: 'claude',
         name: 'Claude Desktop',
         how: 'Add Cairn to your MCP servers in Settings, then paste the connection code when it asks.',
         supported: true,
       },
       {
+        id: 'claude-code',
         name: 'Claude Code',
         how: 'Run the claude mcp add command in your terminal, then paste the connection code.',
         supported: true,
       },
       {
+        id: 'codex',
+        name: 'Codex',
+        how: 'Add Cairn to the MCP servers in Codex, then paste the connection code as the bearer token.',
+        supported: true,
+      },
+      {
+        id: 'cursor',
         name: 'Cursor',
         how: 'Add Cairn under MCP in Cursor settings, with the connection code as the token.',
         supported: true,
       },
       {
+        id: 'vscode',
         name: 'VS Code',
         how: 'Add Cairn through the MCP extension, using the connection code to sign in.',
         supported: true,
       },
       {
+        id: 'gemini',
         name: 'Gemini in your terminal',
         how: 'Run the gemini mcp add command in your terminal, with the connection code as the token.',
         supported: true,
       },
       {
+        id: 'chatgpt',
         name: 'ChatGPT',
         how: 'Needs the sign-in method this copy of Cairn does not have turned on. Connection codes are the tested path here.',
         supported: false,
@@ -100,6 +115,7 @@ function mcpClients(signInMode: boolean, mcpUrl: string): ReadonlyArray<McpClien
   // after, and the one that does not work yet is last.
   return [
     {
+      id: 'claude-code',
       name: 'Claude Code',
       how: 'Paste this into your terminal. Your browser opens so you can say yes here.',
       supported: true,
@@ -120,6 +136,7 @@ function mcpClients(signInMode: boolean, mcpUrl: string): ReadonlyArray<McpClien
       ],
     },
     {
+      id: 'codex',
       name: 'Codex',
       how: 'Paste this into your terminal. Codex opens your browser so you can say yes here.',
       supported: true,
@@ -145,6 +162,7 @@ function mcpClients(signInMode: boolean, mcpUrl: string): ReadonlyArray<McpClien
       ],
     },
     {
+      id: 'gemini',
       name: 'Gemini in your terminal',
       how: 'Paste this into your terminal, then sign in from inside Gemini. Your browser opens so you can say yes here.',
       supported: true,
@@ -174,6 +192,7 @@ function mcpClients(signInMode: boolean, mcpUrl: string): ReadonlyArray<McpClien
       ],
     },
     {
+      id: 'claude',
       name: 'Claude',
       how: 'In Claude, open Connectors in your settings, choose to add a custom connector, and paste this address.',
       supported: true,
@@ -193,6 +212,7 @@ function mcpClients(signInMode: boolean, mcpUrl: string): ReadonlyArray<McpClien
       // refused — so a connection code is the honest route rather than the
       // consolation prize. Saying which part is broken, and whose, is the
       // difference between a person retrying forever and a person finishing.
+      id: 'antigravity',
       name: 'Antigravity',
       how: 'Make a connection code below, paste it into the code here, then put the whole thing in Antigravity’s server settings file.',
       supported: true,
@@ -222,15 +242,18 @@ function mcpClients(signInMode: boolean, mcpUrl: string): ReadonlyArray<McpClien
       ],
     },
     {
+      id: 'cursor',
       name: 'Cursor',
       how: 'In Cursor settings, add Cairn under MCP with this address. It sends you here to approve.',
       supported: true,
       copy: { value: mcpUrl, label: 'Copy address' },
     },
     {
+      id: 'chatgpt',
       name: 'ChatGPT in your browser',
       how: 'Not dependable yet here — it needs a Business or Enterprise workspace with developer mode switched on first. The desktop app is the better route: set up Codex above, then switch to the Codex side of the desktop app, where Cairn is already waiting.',
       supported: false,
+      availability: 'plan',
       note: 'Ordinary ChatGPT chat, in the browser or in the desktop app, does not read the Codex settings, so Cairn does not appear there.',
       extras: [
         {
@@ -243,6 +266,104 @@ function mcpClients(signInMode: boolean, mcpUrl: string): ReadonlyArray<McpClien
   ];
 }
 
+const PRIMARY_AGENT_META = [
+  {
+    id: 'claude',
+    label: 'Claude',
+    mark: 'Cl',
+    detail: 'Claude web and desktop',
+  },
+  {
+    id: 'claude-code',
+    label: 'Claude Code',
+    mark: '>_',
+    detail: 'Anthropic terminal agent',
+  },
+  {
+    id: 'codex',
+    label: 'Codex',
+    mark: 'Cx',
+    detail: 'App, terminal and editor',
+  },
+  {
+    id: 'chatgpt',
+    label: 'ChatGPT',
+    mark: 'GPT',
+    detail: 'Workspace plan required',
+  },
+] as const;
+
+type PrimaryAgentId = (typeof PRIMARY_AGENT_META)[number]['id'];
+type ConnectionStatus = 'Connected' | 'Working';
+
+function primaryAgentIdForConnection(name: string): PrimaryAgentId | null {
+  const normalized = name.toLowerCase().replace(/[^a-z0-9]+/g, ' ');
+  if (normalized.includes('claude code')) return 'claude-code';
+  if (normalized.includes('codex')) return 'codex';
+  if (normalized.includes('chatgpt') || normalized.includes('openai')) return 'chatgpt';
+  if (normalized.includes('claude')) return 'claude';
+  return null;
+}
+
+function AvailabilityBadge({
+  client,
+  connectionStatus,
+}: {
+  client: McpClientCard;
+  connectionStatus?: ConnectionStatus;
+}) {
+  if (connectionStatus) return <Badge tone="good">{connectionStatus}</Badge>;
+  if (client.availability === 'plan') return <Badge tone="warn">Plan dependent</Badge>;
+  if (!client.supported || client.availability === 'not-yet') {
+    return <Badge tone="warn">Not yet</Badge>;
+  }
+  return <Badge tone="good">Works today</Badge>;
+}
+
+function ClientInstructions({
+  client,
+  connectionStatus,
+}: {
+  client: McpClientCard;
+  connectionStatus?: ConnectionStatus;
+}) {
+  return (
+    <>
+      <div className="cairn-card__header">
+        <div>
+          <h3 className="cairn-card__title">{client.name}</h3>
+          <p className="cairn-card__description">{client.how}</p>
+        </div>
+        <AvailabilityBadge client={client} connectionStatus={connectionStatus} />
+      </div>
+      {client.copy ? (
+        <div style={{ marginTop: '0.875rem' }}>
+          <CopyableCode value={client.copy.value} label={client.copy.label} />
+        </div>
+      ) : client.supported ? (
+        <div className="cairn-row" style={{ marginTop: '0.875rem' }}>
+          <LinkButton tone="secondary" href="#client-name">
+            Get a connection code
+          </LinkButton>
+        </div>
+      ) : null}
+      {client.note ? (
+        <p className="cairn-note" style={{ margin: '0.625rem 0 0' }}>
+          {client.note}
+        </p>
+      ) : null}
+      {client.extras?.map((extra) => (
+        <div key={extra.summary} style={{ marginTop: '0.75rem' }}>
+          <Disclosure summary={extra.summary}>
+            <p style={{ marginTop: 0 }}>{extra.body}</p>
+            {extra.copy ? <CopyableCode value={extra.copy.value} label={extra.copy.label} /> : null}
+          </Disclosure>
+        </div>
+      ))}
+    </>
+  );
+}
+
 /** Dates in the connections table, without the milliseconds nobody reads. */
 function shortDate(when: Date): string {
   return when.toISOString().slice(0, 10);
@@ -251,15 +372,42 @@ function shortDateTime(when: Date): string {
   return when.toISOString().slice(0, 16).replace('T', ' ');
 }
 
-export default async function ConnectionsPage() {
+export default async function ConnectionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tool?: string }>;
+}) {
   const context = await requireContext();
   const csrf = await csrfToken();
   const view = await loadConnections(context);
   const active = view.clients.filter((c) => !c.revokedAt);
+  const connectionStatusByAgent = new Map<PrimaryAgentId, ConnectionStatus>();
+  for (const connection of active) {
+    const agentId = primaryAgentIdForConnection(connection.name);
+    if (!agentId) continue;
+    const status: ConnectionStatus = connection.lastUsedAt ? 'Working' : 'Connected';
+    if (status === 'Working' || !connectionStatusByAgent.has(agentId)) {
+      connectionStatusByAgent.set(agentId, status);
+    }
+  }
   // When sign-in is available, pasting an address is the whole story and the
   // connection-code machinery becomes the fallback for tools that cannot do it.
   const signInMode = view.authMode === 'oauth';
   const clients = mcpClients(signInMode, view.mcpUrl);
+  const params = await searchParams;
+  const requestedTool = PRIMARY_AGENT_META.some((agent) => agent.id === params.tool)
+    ? params.tool
+    : 'claude';
+  const primaryClients = PRIMARY_AGENT_META.flatMap((agent) => {
+    const client = clients.find((candidate) => candidate.id === agent.id);
+    return client ? [{ ...agent, client }] : [];
+  });
+  const selectedAgent =
+    primaryClients.find((agent) => agent.id === requestedTool) ?? primaryClients[0];
+  const otherClients = clients.filter(
+    (client) => !PRIMARY_AGENT_META.some((agent) => agent.id === client.id),
+  );
+  const helloPrompt = `Before we start, use ${PRODUCT.name}. Call whoami and setup_status once, then search_memory before asking me to repeat context. When a durable decision or preference emerges, use propose_memory_update so I can review it. Tell me what you found and cite the source.`;
 
   const steps = signInMode
     ? [
@@ -305,75 +453,124 @@ export default async function ConnectionsPage() {
       </Callout>
 
       <section style={{ marginTop: '2rem' }} aria-labelledby="which-tool">
-        <h2 id="which-tool" className="cairn-section-title">
-          {signInMode ? 'Connect an AI tool' : 'How to connect each tool'}
-        </h2>
-        <p style={{ color: 'var(--cairn-ink-muted)', marginTop: 0 }}>
-          {signInMode
-            ? 'Connect more than one and they all read the same memory, so what you tell one, the others already know. Each card below has the one thing to copy and says where it goes.'
-            : 'Every tool below uses the same connection code, made in the section further down. What differs is where you put it.'}
-        </p>
-        <div className="cairn-grid">
-          {clients.map((client) => (
-            <Card key={client.name}>
-              <div className="cairn-card__header">
-                <div>
-                  <h3 className="cairn-card__title">{client.name}</h3>
-                  <p className="cairn-card__description">{client.how}</p>
-                </div>
-                {client.supported ? (
-                  <Badge tone="good">Works today</Badge>
-                ) : (
-                  <Badge tone="warn">Not yet</Badge>
-                )}
-              </div>
-              {client.copy ? (
-                <div style={{ marginTop: '0.875rem' }}>
-                  <CopyableCode value={client.copy.value} label={client.copy.label} />
-                </div>
-              ) : client.supported ? (
-                <div className="cairn-row" style={{ marginTop: '0.875rem' }}>
-                  <LinkButton tone="secondary" href="#client-name">
-                    Get a connection code
-                  </LinkButton>
-                </div>
-              ) : null}
-              {client.note ? (
-                <p className="cairn-meta" style={{ margin: '0.5rem 0 0' }}>
-                  {client.note}
-                </p>
-              ) : null}
-              {/* Folded away on purpose. The one command is the whole card for
-                  most people; the person who wants the agent to do it, or who
-                  is in the app rather than the terminal, opens one thing. */}
-              {client.extras?.map((extra) => (
-                <div key={extra.summary} style={{ marginTop: '0.75rem' }}>
-                  <Disclosure summary={extra.summary}>
-                    <p style={{ marginTop: 0 }}>{extra.body}</p>
-                    {extra.copy ? (
-                      <CopyableCode value={extra.copy.value} label={extra.copy.label} />
-                    ) : null}
-                  </Disclosure>
-                </div>
-              ))}
-            </Card>
-          ))}
+        <div className="cairn-section-head">
+          <div>
+            <p className="cairn-eyebrow">Step 1 of 3</p>
+            <h2 id="which-tool" className="cairn-section-title">
+              Choose the AI you use first
+            </h2>
+          </div>
+          <span className="cairn-note">You can add the others later.</span>
         </div>
+
+        {primaryClients.length > 0 ? (
+          <>
+            <nav className="cairn-agent-picker" aria-label="AI tools">
+              {primaryClients.map((agent) => {
+                const isSelected = selectedAgent?.id === agent.id;
+                const connectionStatus = connectionStatusByAgent.get(agent.id);
+                return (
+                  <Link
+                    key={agent.id}
+                    href={`/connections?tool=${agent.id}`}
+                    className="cairn-agent-choice"
+                    aria-current={isSelected ? 'step' : undefined}
+                  >
+                    <span className="cairn-agent-choice__mark" aria-hidden="true">
+                      {agent.mark}
+                    </span>
+                    <span>
+                      <strong className="cairn-agent-choice__name">{agent.label}</strong>
+                      <span className="cairn-agent-choice__detail">
+                        {connectionStatus ? `${connectionStatus} · ` : ''}
+                        {agent.detail}
+                      </span>
+                    </span>
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {selectedAgent ? (
+              <div className="cairn-agent-setup">
+                <div className="cairn-agent-setup__main">
+                  <p className="cairn-eyebrow">Step 2 of 3 · Add {PRODUCT.name}</p>
+                  <ClientInstructions
+                    client={selectedAgent.client}
+                    connectionStatus={connectionStatusByAgent.get(selectedAgent.id)}
+                  />
+                </div>
+                <aside className="cairn-agent-setup__test" aria-labelledby="test-connection">
+                  <p className="cairn-eyebrow">Step 3 of 3</p>
+                  <h3 id="test-connection" className="cairn-card__title">
+                    Say hello in {selectedAgent.label}
+                  </h3>
+                  <p className="cairn-card__description">
+                    {signInMode
+                      ? 'After you approve the sign-in, paste this once.'
+                      : 'After you add the connection code, paste this once.'}{' '}
+                    The answer proves the connection works and teaches the tool how to carry context
+                    forward.
+                  </p>
+                  <div style={{ marginTop: '0.875rem' }}>
+                    <CopyableCode value={helloPrompt} label="Copy test prompt" />
+                  </div>
+                </aside>
+              </div>
+            ) : null}
+
+            <Callout tone="info" title="One memory, not four agents talking behind your back">
+              Claude, Claude Code, Codex and ChatGPT do not message one another. Each asks Cairn for
+              the same approved memory. New facts become review suggestions first, so another tool
+              only sees them after you keep them.
+            </Callout>
+
+            {otherClients.length > 0 ? (
+              <div style={{ marginTop: '1rem' }}>
+                <Disclosure summary="Other compatible AI tools">
+                  <div className="cairn-grid">
+                    {otherClients.map((client) => (
+                      <Card key={client.id}>
+                        <ClientInstructions client={client} />
+                      </Card>
+                    ))}
+                  </div>
+                </Disclosure>
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <p style={{ color: 'var(--cairn-ink-muted)', marginTop: 0 }}>
+              Every tool below uses the same connection code, made in the section further down. What
+              differs is where you put it.
+            </p>
+            <div className="cairn-grid">
+              {clients.map((client) => (
+                <Card key={client.id}>
+                  <ClientInstructions client={client} />
+                </Card>
+              ))}
+            </div>
+          </>
+        )}
       </section>
 
-      <section style={{ marginTop: '2rem' }} aria-labelledby="how-connecting">
-        <h2 id="how-connecting" className="cairn-section-title">
-          How connecting works
-        </h2>
-        <ol className="cairn-steps">
-          {steps.map((step) => (
-            <li className="cairn-step" key={step.title}>
-              <h3 className="cairn-step__title">{step.title}</h3>
-              <p className="cairn-step__body">{step.body}</p>
-            </li>
-          ))}
-        </ol>
-      </section>
+      {!signInMode ? (
+        <section style={{ marginTop: '2rem' }} aria-labelledby="how-connecting">
+          <h2 id="how-connecting" className="cairn-section-title">
+            How connecting works
+          </h2>
+          <ol className="cairn-steps">
+            {steps.map((step) => (
+              <li className="cairn-step" key={step.title}>
+                <h3 className="cairn-step__title">{step.title}</h3>
+                <p className="cairn-step__body">{step.body}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
 
       <section style={{ marginTop: '2rem' }} aria-labelledby="existing">
         <h2 id="existing" className="cairn-section-title">
@@ -384,8 +581,8 @@ export default async function ConnectionsPage() {
             Your memory is not being shared with anything.
           </EmptyState>
         ) : (
-          <div className="cairn-table-wrap">
-            <table className="cairn-table">
+          <div className="cairn-table-wrap cairn-table-wrap--responsive">
+            <table className="cairn-table cairn-table--responsive">
               <thead>
                 <tr>
                   <th scope="col">Name</th>
@@ -401,8 +598,8 @@ export default async function ConnectionsPage() {
               <tbody>
                 {view.clients.map((client) => (
                   <tr key={client.id}>
-                    <td>{client.name}</td>
-                    <td>
+                    <td data-label="Name">{client.name}</td>
+                    <td data-label="Allowed to">
                       {client.scopes.includes('memory:propose')
                         ? 'Look things up and suggest'
                         : 'Look things up'}
@@ -422,16 +619,20 @@ export default async function ConnectionsPage() {
                               .join(', ')}`}
                       </div>
                     </td>
-                    <td>{shortDate(client.createdAt)}</td>
-                    <td>{client.lastUsedAt ? shortDateTime(client.lastUsedAt) : 'Not yet'}</td>
-                    <td>
+                    <td data-label="Connected">{shortDate(client.createdAt)}</td>
+                    <td data-label="Last used">
+                      {client.lastUsedAt ? shortDateTime(client.lastUsedAt) : 'Not yet'}
+                    </td>
+                    <td data-label="Status">
                       {client.revokedAt ? (
                         <Badge tone="neutral">Turned off</Badge>
+                      ) : client.lastUsedAt ? (
+                        <Badge tone="good">Working</Badge>
                       ) : (
-                        <Badge tone="good">Active</Badge>
+                        <Badge tone="neutral">Set up, not used yet</Badge>
                       )}
                     </td>
-                    <td>
+                    <td data-label="Actions">
                       {client.revokedAt ? null : (
                         <ActionForm
                           action={revokeConnectedAi}
@@ -452,149 +653,160 @@ export default async function ConnectionsPage() {
         )}
       </section>
 
-      {signInMode ? (
-        <section style={{ marginTop: '2rem' }} aria-labelledby="address">
-          <h2 id="address" className="cairn-section-title">
-            Any other tool
-          </h2>
-          <Card>
-            <p style={{ marginTop: 0 }}>
-              Any tool that accepts a custom connector address can use this one. It will bring you
-              back here to ask whether that is alright, and you say yes once.
-            </p>
-            <CopyableCode value={view.mcpUrl} label="Copy address" />
-            <p className="cairn-meta" style={{ marginBottom: 0, marginTop: '0.75rem' }}>
-              If a tool cannot use an address at all, make a connection code below instead.
-            </p>
-          </Card>
-        </section>
-      ) : null}
+      <details className="cairn-advanced-setup" open={!signInMode}>
+        <summary style={{ display: signInMode ? undefined : 'none' }}>
+          Advanced setup and connection codes
+        </summary>
+        <div className="cairn-advanced-setup__body">
+          {signInMode ? (
+            <section aria-labelledby="address">
+              <h2 id="address" className="cairn-section-title">
+                Any other tool
+              </h2>
+              <Card>
+                <p style={{ marginTop: 0 }}>
+                  Any tool that accepts a custom connector address can use this one. It will bring
+                  you back here to ask whether that is alright, and you say yes once.
+                </p>
+                <CopyableCode value={view.mcpUrl} label="Copy address" />
+                <p className="cairn-meta" style={{ marginBottom: 0, marginTop: '0.75rem' }}>
+                  If a tool cannot use an address at all, make a connection code below instead.
+                </p>
+              </Card>
+            </section>
+          ) : null}
 
-      <section style={{ marginTop: '2rem' }} aria-labelledby="new-connection">
-        <h2 id="new-connection" className="cairn-section-title">
-          {signInMode ? 'Or make a connection code' : 'Connect a new tool'}
-        </h2>
-        {signInMode ? (
-          <p style={{ color: 'var(--cairn-ink-muted)', marginTop: 0 }}>
-            Only needed for a tool that cannot use the address above, or one running on a computer
-            with no browser.
-          </p>
-        ) : null}
-        <Card>
-          <ActionForm
-            action={createConnectedAi}
-            csrf={csrf}
-            className="cairn-stack cairn-stack--md"
-          >
-            <div className="cairn-field">
-              <label className="cairn-field__label" htmlFor="client-name">
-                What is it called?
-              </label>
-              <p className="cairn-field__hint" id="client-name-hint">
-                Only for you, so you can tell your connections apart.
+          <section style={{ marginTop: '2rem' }} aria-labelledby="new-connection">
+            <h2 id="new-connection" className="cairn-section-title">
+              {signInMode ? 'Or make a connection code' : 'Connect a new tool'}
+            </h2>
+            {signInMode ? (
+              <p style={{ color: 'var(--cairn-ink-muted)', marginTop: 0 }}>
+                Only needed for a tool that cannot use the address above, or one running on a
+                computer with no browser.
               </p>
-              <input
-                id="client-name"
-                className="cairn-input"
-                name="name"
-                aria-describedby="client-name-hint"
-                placeholder="Claude on my laptop"
-                maxLength={80}
-              />
-            </div>
-            <fieldset className="cairn-fieldset">
-              <legend>What it is allowed to do</legend>
-              <label className="cairn-choice">
-                <input type="checkbox" name="allowProposals" />
-                Let it suggest new things to remember (you still review every one)
-              </label>
-              <label className="cairn-choice">
-                <input type="checkbox" name="includeSensitive" />
-                Include memory you marked sensitive
-              </label>
-            </fieldset>
-            <MemoryTypeScope />
-            <div>
-              <SubmitButton busyLabel="Creating…">Create a connection code</SubmitButton>
-            </div>
-          </ActionForm>
-        </Card>
-      </section>
+            ) : null}
+            <Card>
+              <ActionForm
+                action={createConnectedAi}
+                csrf={csrf}
+                className="cairn-stack cairn-stack--md"
+              >
+                <div className="cairn-field">
+                  <label className="cairn-field__label" htmlFor="client-name">
+                    What is it called?
+                  </label>
+                  <p className="cairn-field__hint" id="client-name-hint">
+                    Only for you, so you can tell your connections apart.
+                  </p>
+                  <input
+                    id="client-name"
+                    className="cairn-input"
+                    name="name"
+                    aria-describedby="client-name-hint"
+                    placeholder="Claude on my laptop"
+                    maxLength={80}
+                  />
+                </div>
+                <fieldset className="cairn-fieldset">
+                  <legend>What it is allowed to do</legend>
+                  <label className="cairn-choice">
+                    <input type="checkbox" name="allowProposals" />
+                    Let it suggest new things to remember (you still review every one)
+                  </label>
+                  <label className="cairn-choice">
+                    <input type="checkbox" name="includeSensitive" />
+                    Include memory you marked sensitive
+                  </label>
+                </fieldset>
+                <MemoryTypeScope />
+                <div>
+                  <SubmitButton busyLabel="Creating…">Create a connection code</SubmitButton>
+                </div>
+              </ActionForm>
+            </Card>
+          </section>
 
-      <section style={{ marginTop: '2rem' }} aria-labelledby="how-to">
-        <h2 id="how-to" className="cairn-section-title">
-          Where a connection code goes
-        </h2>
-        <Card>
-          <p style={{ marginTop: 0 }}>
-            After you create a code above, paste it into the AI tool you want to use. The exact
-            steps differ per tool; the two most common are below.
-          </p>
+          <section style={{ marginTop: '2rem' }} aria-labelledby="how-to">
+            <h2 id="how-to" className="cairn-section-title">
+              Where a connection code goes
+            </h2>
+            <Card>
+              <p style={{ marginTop: 0 }}>
+                After you create a code above, paste it into the AI tool you want to use. The exact
+                steps differ per tool; the two most common are below.
+              </p>
 
-          <Disclosure summary="Claude Code">
-            <p>Run this in a terminal, replacing the code with yours:</p>
-            <pre className="cairn-code">
-              {`claude mcp add ${PRODUCT.slug} \\
+              <Disclosure summary="Claude Code">
+                <p>Run this in a terminal, replacing the code with yours:</p>
+                <pre className="cairn-code">
+                  {`claude mcp add ${PRODUCT.slug} \\
   --env CAIRN_CONNECTION_CODE=your-code-here \\
   -- npx -y tsx ${'<path-to-this-project>'}/packages/mcp/src/bin/stdio.ts`}
-            </pre>
-          </Disclosure>
+                </pre>
+              </Disclosure>
 
-          <Disclosure summary="Codex, or anything that reads a config file">
-            <p>Add this to the tool&rsquo;s MCP configuration:</p>
-            <pre className="cairn-code">
-              {JSON.stringify(
-                {
-                  mcpServers: {
-                    [PRODUCT.slug]: {
-                      command: 'npx',
-                      args: ['-y', 'tsx', '<path-to-this-project>/packages/mcp/src/bin/stdio.ts'],
-                      env: { CAIRN_CONNECTION_CODE: 'your-code-here' },
+              <Disclosure summary="Codex, or anything that reads a config file">
+                <p>Add this to the tool&rsquo;s MCP configuration:</p>
+                <pre className="cairn-code">
+                  {JSON.stringify(
+                    {
+                      mcpServers: {
+                        [PRODUCT.slug]: {
+                          command: 'npx',
+                          args: [
+                            '-y',
+                            'tsx',
+                            '<path-to-this-project>/packages/mcp/src/bin/stdio.ts',
+                          ],
+                          env: { CAIRN_CONNECTION_CODE: 'your-code-here' },
+                        },
+                      },
                     },
-                  },
-                },
-                null,
-                2,
-              )}
-            </pre>
-          </Disclosure>
+                    null,
+                    2,
+                  )}
+                </pre>
+              </Disclosure>
 
-          <Disclosure summary="Technical details">
-            <dl className="cairn-dl">
-              <div className="cairn-dl__row">
-                <dt className="cairn-dl__term">Remote address</dt>
-                <dd className="cairn-dl__detail">
-                  <code className="cairn-code">{view.mcpUrl}</code>
-                </dd>
-              </div>
-              <div className="cairn-dl__row">
-                <dt className="cairn-dl__term">Transport</dt>
-                <dd className="cairn-dl__detail">Streamable HTTP, stateless</dd>
-              </div>
-              <div className="cairn-dl__row">
-                <dt className="cairn-dl__term">Protocol revision</dt>
-                <dd className="cairn-dl__detail">{MCP_PROTOCOL_REVISION}</dd>
-              </div>
-              <div className="cairn-dl__row">
-                <dt className="cairn-dl__term">Authorization</dt>
-                <dd className="cairn-dl__detail">
-                  {view.authMode === 'oauth'
-                    ? 'OAuth 2.1 bearer token, checked for issuer, audience and scopes'
-                    : 'Bearer connection code, valid on this machine only'}
-                </dd>
-              </div>
-              <div className="cairn-dl__row">
-                <dt className="cairn-dl__term">Scopes</dt>
-                <dd className="cairn-dl__detail">
-                  <code className="cairn-code">memory:read</code>, optionally{' '}
-                  <code className="cairn-code">memory:propose</code>. Writing is not offered in this
-                  release.
-                </dd>
-              </div>
-            </dl>
-          </Disclosure>
-        </Card>
-      </section>
+              <Disclosure summary="Technical details">
+                <dl className="cairn-dl">
+                  <div className="cairn-dl__row">
+                    <dt className="cairn-dl__term">Remote address</dt>
+                    <dd className="cairn-dl__detail">
+                      <code className="cairn-code">{view.mcpUrl}</code>
+                    </dd>
+                  </div>
+                  <div className="cairn-dl__row">
+                    <dt className="cairn-dl__term">Transport</dt>
+                    <dd className="cairn-dl__detail">Streamable HTTP, stateless</dd>
+                  </div>
+                  <div className="cairn-dl__row">
+                    <dt className="cairn-dl__term">Protocol revision</dt>
+                    <dd className="cairn-dl__detail">{MCP_PROTOCOL_REVISION}</dd>
+                  </div>
+                  <div className="cairn-dl__row">
+                    <dt className="cairn-dl__term">Authorization</dt>
+                    <dd className="cairn-dl__detail">
+                      {view.authMode === 'oauth'
+                        ? 'OAuth 2.1 bearer token, checked for issuer, audience and scopes'
+                        : 'Bearer connection code, valid on this machine only'}
+                    </dd>
+                  </div>
+                  <div className="cairn-dl__row">
+                    <dt className="cairn-dl__term">Scopes</dt>
+                    <dd className="cairn-dl__detail">
+                      <code className="cairn-code">memory:read</code>, optionally{' '}
+                      <code className="cairn-code">memory:propose</code>. Writing is not offered in
+                      this release.
+                    </dd>
+                  </div>
+                </dl>
+              </Disclosure>
+            </Card>
+          </section>
+        </div>
+      </details>
     </AppShell>
   );
 }
