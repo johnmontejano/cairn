@@ -182,6 +182,19 @@ test.describe('connecting an AI tool', () => {
 
     await expect(page.getByText('What a connected tool can and cannot do')).toBeVisible();
     await expect(page.getByText(/cannot change or delete your memory/i)).toBeVisible();
+    for (const tool of [
+      /Claude web and desktop/,
+      /Claude Code.*Anthropic terminal agent/,
+      /Codex.*App, terminal and editor/,
+      /ChatGPT.*Workspace plan required/,
+    ]) {
+      await expect(page.locator('.cairn-agent-choice').filter({ hasText: tool })).toBeVisible();
+    }
+    await page.locator('.cairn-agent-choice').filter({ hasText: /Codex/ }).click();
+    await expect(page).toHaveURL(/tool=codex/);
+    await expect(page.getByRole('heading', { name: 'Say hello in Codex' })).toBeVisible();
+
+    await page.getByText('Advanced setup and connection codes', { exact: true }).click();
 
     await page.getByLabel('What is it called?').fill('Claude on my laptop');
     await page.getByRole('button', { name: 'Create a connection code' }).click();
@@ -196,6 +209,10 @@ test.describe('connecting an AI tool', () => {
         .filter({ hasText: /^cairn_/ })
         .first(),
     ).toBeVisible();
+    await expect(
+      page.locator('.cairn-agent-choice').filter({ hasText: /Claude web and desktop/ }),
+    ).toContainText('Connected');
+    await expect(page.getByText('Set up, not used yet')).toBeVisible();
   });
 });
 
@@ -328,7 +345,7 @@ test.describe('accessibility fundamentals', () => {
   test('the layout does not scroll sideways on a phone', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'checked on the mobile project only');
     await signIn(page, freshEmail('visitor'));
-    for (const path of ['/home', '/memory', '/sources', '/exports', '/settings']) {
+    for (const path of ['/home', '/memory', '/sources', '/connections', '/exports', '/settings']) {
       await page.goto(path);
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,

@@ -56,45 +56,114 @@ export default async function WelcomePage({
       </p>
 
       {!how ? (
-        <div className="cairn-choice-grid">
-          {/* First, and on purpose. The reason most people are here is that they
-              are tired of telling Claude, Codex and ChatGPT the same things, and
-              this is the only card that answers that. */}
-          <Link href="/connections" className="cairn-choice-card cairn-choice-card--accent">
-            <span className="cairn-choice-card__title">Connect Claude, Codex or ChatGPT</span>
-            <span className="cairn-choice-card__body">
-              Set it up once and they all read from the same memory. About two minutes, and you can
-              do it before you have saved anything.
-            </span>
-          </Link>
-          <ActionForm action={loadExample} csrf={csrf} hidden={{ projectId: context.project.id }}>
-            <button type="submit" className="cairn-choice-card">
-              <span className="cairn-choice-card__title">Try an example</span>
-              <span className="cairn-choice-card__body">
-                See how it works with a sample project. You can delete it afterwards.
-              </span>
-            </button>
-          </ActionForm>
-          <Link href="/welcome?how=paste" className="cairn-choice-card">
-            <span className="cairn-choice-card__title">Paste something</span>
-            <span className="cairn-choice-card__body">
-              Notes, an email, a plan — anything written.
-            </span>
-          </Link>
-          <Link href="/welcome?how=upload" className="cairn-choice-card">
-            <span className="cairn-choice-card__title">Upload a file</span>
-            <span className="cairn-choice-card__body">A Word document, a PDF, or a text file.</span>
-          </Link>
-          {/* Named after the actual services rather than "an app", which read as
-              the AI-tool option and sent people looking for Claude to a page
-              about document storage. */}
-          <Link href="/sources" className="cairn-choice-card">
-            <span className="cairn-choice-card__title">Connect Google Drive or Notion</span>
-            <span className="cairn-choice-card__body">
-              Keep memory up to date from somewhere you already keep documents.
-            </span>
-          </Link>
-        </div>
+        <>
+          <section className="cairn-onboarding" aria-labelledby="choose-first-ai">
+            <div className="cairn-onboarding__intro">
+              <p className="cairn-eyebrow">1 · Connect one AI</p>
+              <h2 id="choose-first-ai" className="cairn-section-title">
+                Choose where your memory should show up first
+              </h2>
+              <p>
+                Start with one. You can add the others later, and each connected tool reads from the
+                same approved memory within the permissions you give it.
+              </p>
+            </div>
+            <nav className="cairn-agent-picker" aria-label="Choose an AI tool">
+              <Link href="/connections?tool=claude" className="cairn-agent-choice">
+                <span className="cairn-agent-choice__mark" aria-hidden="true">
+                  Cl
+                </span>
+                <span>
+                  <strong className="cairn-agent-choice__name">Claude</strong>
+                  <span className="cairn-agent-choice__detail">Web and desktop</span>
+                </span>
+              </Link>
+              <Link href="/connections?tool=claude-code" className="cairn-agent-choice">
+                <span className="cairn-agent-choice__mark" aria-hidden="true">
+                  &gt;_
+                </span>
+                <span>
+                  <strong className="cairn-agent-choice__name">Claude Code</strong>
+                  <span className="cairn-agent-choice__detail">Terminal agent</span>
+                </span>
+              </Link>
+              <Link href="/connections?tool=codex" className="cairn-agent-choice">
+                <span className="cairn-agent-choice__mark" aria-hidden="true">
+                  Cx
+                </span>
+                <span>
+                  <strong className="cairn-agent-choice__name">Codex</strong>
+                  <span className="cairn-agent-choice__detail">App, terminal, editor</span>
+                </span>
+              </Link>
+              <Link href="/connections?tool=chatgpt" className="cairn-agent-choice">
+                <span className="cairn-agent-choice__mark" aria-hidden="true">
+                  GPT
+                </span>
+                <span>
+                  <strong className="cairn-agent-choice__name">ChatGPT</strong>
+                  <span className="cairn-agent-choice__detail">Workspace plan required</span>
+                </span>
+              </Link>
+            </nav>
+            <ol className="cairn-onboarding-track" aria-label="Setup steps">
+              <li>
+                <strong>Choose</strong>
+                <span>Pick the AI you already use.</span>
+              </li>
+              <li>
+                <strong>Approve</strong>
+                <span>Sign in and say yes once.</span>
+              </li>
+              <li>
+                <strong>Remember</strong>
+                <span>Keep the first useful fact.</span>
+              </li>
+            </ol>
+          </section>
+
+          <section className="cairn-onboarding-secondary" aria-labelledby="start-with-memory">
+            <div className="cairn-section-head">
+              <div>
+                <p className="cairn-eyebrow">Or start with memory</p>
+                <h2 id="start-with-memory" className="cairn-section-title">
+                  Give Cairn something useful first
+                </h2>
+              </div>
+              <span className="cairn-note">Your AI can be connected afterwards.</span>
+            </div>
+            <div className="cairn-choice-grid cairn-choice-grid--compact">
+              <ActionForm
+                action={loadExample}
+                csrf={csrf}
+                hidden={{ projectId: context.project.id }}
+              >
+                <button type="submit" className="cairn-choice-card cairn-choice-card--accent">
+                  <span className="cairn-choice-card__title">Try an example</span>
+                  <span className="cairn-choice-card__body">
+                    See a sample project before adding your own information.
+                  </span>
+                </button>
+              </ActionForm>
+              <Link href="/welcome?how=paste" className="cairn-choice-card">
+                <span className="cairn-choice-card__title">Paste notes</span>
+                <span className="cairn-choice-card__body">
+                  An email, a plan, or written context.
+                </span>
+              </Link>
+              <Link href="/welcome?how=upload" className="cairn-choice-card">
+                <span className="cairn-choice-card__title">Upload a file</span>
+                <span className="cairn-choice-card__body">A Word document, PDF, or text file.</span>
+              </Link>
+              <Link href="/sources" className="cairn-choice-card">
+                <span className="cairn-choice-card__title">Connect an app</span>
+                <span className="cairn-choice-card__body">
+                  Google Drive or Notion stays in sync.
+                </span>
+              </Link>
+            </div>
+          </section>
+        </>
       ) : (
         <Card>
           <div className="cairn-card__header">

@@ -1,6 +1,6 @@
 ---
 name: Cairn
-description: One private memory, shared by the AI tools you choose — a cool working-tool ground with one indigo voice.
+description: One private memory, shared by the AI tools you choose — a cool working-tool ground with one amber voice.
 colors:
   paper: '#f4f6f8'
   surface: '#ffffff'
@@ -9,10 +9,10 @@ colors:
   ink: '#14181c'
   ink-muted: '#4b5560'
   ink-subtle: '#5f6a75'
-  accent: '#3454d1'
-  accent-hover: '#2a44ad'
-  accent-soft: '#e7ecfb'
-  accent-ink: '#24399e'
+  accent: '#8a5c00'
+  accent-hover: '#704b00'
+  accent-soft: '#fff1c7'
+  accent-ink: '#654200'
   good: '#1f6b45'
   good-soft: '#e3f1ea'
   warn: '#7a5410'
@@ -23,12 +23,12 @@ colors:
   info-soft: '#e2eef5'
   border: '#d7dee4'
   border-strong: '#b9c3cc'
-  focus: '#2a44ad'
+  focus: '#8a5c00'
   night-paper: '#10141a'
-  night-accent: '#7c97f0'
+  night-accent: '#f0b429'
 typography:
   display:
-    fontFamily: "Spectral, ui-serif, Georgia, Cambria, 'Times New Roman', serif"
+    fontFamily: "ui-serif, Georgia, Cambria, 'Times New Roman', serif"
     fontSize: 'clamp(2.5rem, 1.35rem + 4.2vw, 4.25rem)'
     fontWeight: 600
     lineHeight: 1.04
@@ -124,28 +124,28 @@ components:
 
 **Creative North Star: "Small Stones, Deliberately Placed"**
 
-Cairn is a private shared-memory tool: it asks people to read and judge their own words, so the interface recedes. The ground is cool — blue-grey papers and surfaces, never warm cream — with exactly one deliberate voice, an indigo-blue accent. This is an explicit refusal of the warm cream-and-clay pairing that reads as machine-generated default in this category (a standing decision; see memory/DECISIONS.md on originality vs. the category reference). Restraint is not blandness: it is the working-tool posture of a product whose whole argument is trust and receipts.
+Cairn is a private shared-memory tool: it asks people to read and judge their own words, so the interface recedes. The ground is cool — blue-grey papers and surfaces, never warm cream — with exactly one deliberate voice, an amber/ochre accent. This is an explicit refusal of the warm cream-and-clay pairing that reads as machine-generated default in this category (a standing decision; see memory/DECISIONS.md on originality vs. the category reference). Restraint is not blandness: it is the working-tool posture of a product whose whole argument is trust and receipts.
 
-The system lives in two registers. **The app past sign-in stays quiet**: it follows the person's own theme (light and dark are both first-class, every pair AA-checked in both), uses the system font stacks, and moves almost not at all. **The landing page is the one place with visual ambition**: it commits to the dark ground regardless of system preference, loads Spectral as its display serif, and tells the product's story with one scroll-driven scene — five scattered stones assembling into a cairn. Nothing the landing does leaks into the app; its dark tokens and display face are scoped to `.cairn-landing`.
+The system lives in two registers. **The app past sign-in stays quiet**: it uses the dark product ground by default, retains a fully AA-checked light token override, uses the system font stacks, and moves almost not at all. **The landing page is the one place with visual ambition**: it commits to the dark ground, uses the local system-serif stack as its display register, and tells the product's story with one scroll-driven scene — five scattered stones assembling into a cairn. Nothing the landing does leaks into the app; its display treatment and motion stay scoped to `.cairn-landing`.
 
 Everything is built defensively: content is complete without JavaScript, motion is gated behind `prefers-reduced-motion`, heavy libraries (GSAP, three.js) are dynamically imported only where used, and every enhancement has a static fallback already on screen before it loads.
 
 **Key Characteristics:**
 
-- Cool blue-grey ground, single indigo accent, four status hues used only for status
+- Cool blue-grey ground, single amber accent, four status hues used only for status
 - Every foreground/background pair meets WCAG 2.2 AA in both themes — checked, not assumed
-- Serif headings over system-sans body; Spectral display face on the landing only
+- Serif headings over system-sans body; larger editorial serif display on the landing only
 - Hairline 1px borders carry structure; shadows are small and ambient
 - 44px minimum target on every control; focus is always visible, only restyled
 - One motion grammar: rise-from-dark, scroll-scrubbed assembly, reduced-motion safe
 
 ## Colors
 
-A cool working-tool ground with one indigo voice; the light theme is the normative token set, and a mirrored dark set (near-black blue papers, tinted accent) lives in the same file.
+A cool working-tool ground with one amber voice; the dark theme is the default product ground, and an accessible light set lives in the same file.
 
 ### Primary
 
-- **Indigo** (#3454d1): the single accent. Primary buttons, active states, the pulsing progress dot, citation markers, and the landing's rim light and glow washes. In dark contexts it lightens to **Night Indigo** (#7c97f0) because saturated indigo goes muddy on a dark ground. `accent-ink` (#24399e) is the text-safe variant (9.0:1); `accent-soft` (#e7ecfb) is the tint for selected/hovered surfaces and step markers.
+- **Amber/ochre** (#8a5c00 in light, #f0b429 in dark): the single accent. It marks primary actions, selected setup, progress, citations, and the landing's rim light and glow washes. Light mode uses `accent-ink` (#654200) for text and `accent-soft` (#fff1c7) for selected surfaces; dark mode uses pale amber text and a deep amber tint.
 
 ### Neutral
 
@@ -162,18 +162,18 @@ A cool working-tool ground with one indigo voice; the light theme is the normati
 
 **The AA Ledger Rule.** Every foreground/background pair meets WCAG 2.2 AA in both themes, and the contrast ratios are recorded as comments next to the tokens. Do not introduce a colour without checking it in both themes.
 
-**The One Voice Rule.** Indigo is the only accent. If something needs emphasis and it isn't a status, it gets indigo or it gets typography — never a second hue.
+**The One Voice Rule.** Amber is the only accent. If something needs emphasis and it isn't a status, it gets amber or it gets typography — never a second hue.
 
 **The Mirror Rule.** The landing's committed-dark block on `.cairn-landing` mirrors the dark block in `packages/ui/src/tokens.css` exactly. Change tokens.css first, then the mirror; never invent a colour in the landing scope.
 
 ## Typography
 
-**Display Font:** Spectral 500/600, normal + italic (landing only; falls back to the system serif) — exposed as `--cairn-font-display-face`, consumed via `--landing-display`
+**Display Font:** Local system-serif stack at 500/600, normal + italic (landing only), consumed via `--landing-display`
 **Headline Font:** System serif stack (ui-serif, Georgia, Cambria)
 **Body Font:** System sans stack (ui-sans-serif, system-ui, Segoe UI, Roboto)
 **Mono Font:** System mono stack (ui-monospace, SF Mono, Menlo, Consolas)
 
-**Character:** Serif headings give the reading-your-own-words product a bookish steadiness; the system sans body keeps it a tool, not a magazine. On the landing, Spectral's chiseled, flared terminals read as letters cut into stone — the one face on the page with a point of view. Italic + indigo `em` is the emphasis idiom in display lines.
+**Character:** Serif headings give the reading-your-own-words product a bookish steadiness; the system sans body keeps it a tool, not a magazine. On the landing, the larger italic system serif supplies the editorial point of view without making production builds depend on a font host. Italic + amber `em` is the emphasis idiom in display lines.
 
 ### Hierarchy
 
@@ -186,7 +186,7 @@ A cool working-tool ground with one indigo voice; the light theme is the normati
 
 ### Named Rules
 
-**The Two-Register Rule.** Spectral exists only inside `.cairn-landing` (scoped via `--cairn-font-display-face`, self-hosted by next/font). The app past sign-in never inherits the display face; its serif is always the system stack.
+**The Two-Register Rule.** The display register exists only inside `.cairn-landing` via `--landing-display`. The app past sign-in keeps its quiet system-sans headings.
 
 **The Measure Rule.** Body copy is always width-limited: 60ch ledes, 52ch trail bodies, 46ch empty-state copy. No full-width paragraphs.
 
@@ -203,7 +203,7 @@ A cool working-tool ground with one indigo voice; the light theme is the normati
 
 ## Elevation & Depth
 
-Hairlines first, shadows second. Structure is carried by 1px borders and tonal layering (sunken wells, raised panels); shadows are small, ambient, and reserved for things that genuinely float. The landing adds two pure-CSS radial indigo washes (`color-mix` of accent into transparent, ≤17%) — behind the fold and beneath the close — as atmosphere, not elevation.
+Hairlines first, shadows second. Structure is carried by 1px borders and tonal layering (sunken wells, raised panels); shadows are small, ambient, and reserved for things that genuinely float. The landing adds two pure-CSS radial amber washes (`color-mix` of accent into transparent, ≤17%) — behind the fold and beneath the close — as atmosphere, not elevation.
 
 ### Shadow Vocabulary
 
@@ -227,7 +227,7 @@ Soft, workmanlike corners on a three-step radius: 6px (badges, code chips, focus
 Confident but quiet; colour changes on hover, not movement.
 
 - **Shape:** gently rounded (10px), min 44×44px, weight 550, 120ms background/border/colour ease.
-- **Primary:** indigo fill (#3454d1), white text; dark contexts flip to light-indigo fill with near-black text. Hover deepens to accent-hover.
+- **Primary:** ochre fill with white text in light mode; dark contexts use light amber with near-black text. Hover moves to `accent-hover`.
 - **Secondary:** surface fill, strong hairline border; hover sinks to surface-sunken.
 - **Quiet:** transparent, muted ink; hover gains the sunken ground.
 - **Danger:** transparent with danger text and border; hover tints danger-soft. Destructive actions are outlined, never filled.
@@ -243,7 +243,7 @@ Confident but quiet; colour changes on hover, not movement.
 - **Corner Style:** 10px; feature panels and choice cards 16px.
 - **Background:** surface on paper, 1px hairline border, whisper shadow, 1.25rem × 1.375rem padding.
 - **Card title:** serif, 1.125rem, 600.
-- **Choice cards:** hover swaps to indigo border + accent-soft ground; the `--accent` variant holds that state permanently for the one recommended choice.
+- **Choice cards:** hover swaps to amber border + accent-soft ground; the `--accent` variant holds that state permanently for the one recommended choice.
 
 ### Inputs / Fields
 
@@ -255,20 +255,20 @@ Confident but quiet; colour changes on hover, not movement.
 ### Navigation
 
 - **App:** links sit in one pill-shaped sunken track; each link is its own pill (44px, weight 550). Hover changes colour only — moving the pill would make the row twitch. Current page: surface pill, accent-ink text, whisper shadow.
-- **Landing:** transparent header over the night hero that regains glass on scroll (`.is-scrolled`); text links are quiet pills (hidden ≤40rem), the sign-in CTA an outlined indigo pill that fills accent-soft on hover.
-- **Shell status:** a standing pill with the pulsing indigo dot (`cairn-pulse`, 1.6s opacity ease) whenever jobs are running.
+- **Landing:** transparent header over the night hero that regains glass on scroll (`.is-scrolled`); text links are quiet pills (hidden ≤40rem), the sign-in CTA an outlined amber pill that fills accent-soft on hover.
+- **Shell status:** a standing pill with the pulsing amber dot (`cairn-pulse`, 1.6s opacity ease) whenever jobs are running.
 
 ### The Trail (landing signature)
 
-Numbered stops on a hairline rail — a walked path, not a card grid. 3rem circular markers in accent-soft with a 40%-transparent indigo ring and display-face numerals; a 1px gradient rail joins stop to stop and fades before the last. The `--pair` variant puts two stops side by side with no rail.
+Numbered stops on a hairline rail — a walked path, not a card grid. 3rem circular markers in accent-soft with a 40%-transparent amber ring and display-face numerals; a 1px gradient rail joins stop to stop and fades before the last. The `--pair` variant puts two stops side by side with no rail.
 
 ### The Proof Demo (landing signature)
 
-The product's argument, enacted: an italic display-face question, a sans answer with superscript indigo citation markers, and a sunken evidence block quoting the exact source sentence. Hovering a citation lights the receipt (accent-soft ground, indigo hairline, 200ms). Demonstration content always wears the pill-shaped **Example** tag. The same citation idiom (`.cairn-citation-marker`) exists in the app's answers.
+The product's argument, enacted: an italic display-face question, a sans answer with superscript amber citation markers, and a sunken evidence block quoting the exact source sentence. Hovering a citation lights the receipt (accent-soft ground, amber hairline, 200ms). Demonstration content always wears the pill-shaped **Example** tag. The same citation idiom (`.cairn-citation-marker`) exists in the app's answers.
 
 ### The Stone Scene (landing signature)
 
-Five ellipsoid stones (three.js) scrub from adrift to a balanced cairn with scroll — forwards and backwards with the person, never on its own schedule. Colours are read live from the `--cairn-*` tokens on the scene's own container (so the committed-dark scope answers, not the root), using only tokens that survive both grounds: ink-subtle, border-strong, accent (the one indigo stone), ink-muted. Indigo rim light from below-left, ~90 slow-rising indigo dust motes, a soft blob shadow that darkens as the stack lands, and pointer parallax on fine pointers only (eased at 0.06/frame — weight, not tracking). Renders only while visible; pixel ratio clamped to 1.75; everything disposed on unmount. Assembly completes: wide viewports key progress to the top of the page (done in ~0.35 viewport); narrow viewports key it to the canvas's own arrival so phones still see the story.
+Five ellipsoid stones (three.js) scrub from adrift to a balanced cairn with scroll — forwards and backwards with the person, never on its own schedule. Colours are read live from the `--cairn-*` tokens on the scene's own container (so the committed-dark scope answers, not the root), using only tokens that survive both grounds: ink-subtle, border-strong, accent (the one amber stone), ink-muted. Amber rim light from below-left, ~90 slow-rising amber dust motes, a soft blob shadow that darkens as the stack lands, and pointer parallax on fine pointers only (eased at 0.06/frame — weight, not tracking). Renders only while visible; pixel ratio clamped to 1.75; everything disposed on unmount. Assembly completes: wide viewports key progress to the top of the page (done in ~0.35 viewport); narrow viewports key it to the canvas's own arrival so phones still see the story.
 
 ### Motion grammar (landing)
 
@@ -294,7 +294,7 @@ One grammar, owned in one place (`landing-motion.tsx`):
 ### Don't:
 
 - **Don't** introduce a second accent hue, or use status colours decoratively.
-- **Don't** let the app past sign-in commit to a theme, load Spectral, or grow scroll choreography — it follows the person's preference and stays quiet.
+- **Don't** let the app past sign-in inherit the landing display register or grow scroll choreography — it stays quiet and task-focused.
 - **Don't** move elements on hover in the app nav or button rows; hover is colour-only there. (Landing CTAs may lift 1px — that is the landing's licence, not the app's.)
 - **Don't** hide content until JavaScript arrives, or use `autoAlpha`/`visibility: hidden` for pending animations.
 - **Don't** invent colours inside the `.cairn-landing` dark scope — it is a verbatim mirror of the tokens.css dark block (the Mirror Rule).

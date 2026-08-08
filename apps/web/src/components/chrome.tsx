@@ -54,10 +54,10 @@ export function Wordmark({ withName = true }: { withName?: boolean }) {
  */
 const NAV = [
   { href: '/home', label: 'Home' },
-  { href: '/connections', label: 'AI tools' },
-  { href: '/sources', label: 'Apps' },
   { href: '/memory', label: 'Memory' },
-  { href: '/settings', label: 'Settings' },
+  { href: '/sources', label: 'Apps' },
+  { href: '/connections', label: 'AI tools' },
+  { href: '/exports', label: 'Exports' },
 ];
 
 /**
@@ -126,6 +126,13 @@ export async function AppShell({
                 Still organizing your memory
               </span>
             ) : null}
+            <Link
+              href="/settings"
+              className="cairn-button cairn-button--quiet"
+              aria-current={current === '/settings' ? 'page' : undefined}
+            >
+              Settings
+            </Link>
             <form action={signOut}>
               <button type="submit" className="cairn-button cairn-button--quiet">
                 Sign out
@@ -147,7 +154,7 @@ export async function AppShell({
       {status && status.setup.blockedBecause ? (
         <div className="cairn-shell-banner">
           <Callout tone="info">
-            {status.setup.blockedBecause} <Link href="/sources">Go to Sources</Link>.
+            {status.setup.blockedBecause} <Link href="/sources">Go to Apps</Link>.
           </Callout>
         </div>
       ) : null}

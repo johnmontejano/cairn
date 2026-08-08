@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Spectral } from 'next/font/google';
 import { PRODUCT } from '@cairn/config';
 import { Badge, Callout, SkipLink } from '@cairn/ui';
 import { getServices } from '@cairn/ingestion';
@@ -14,21 +13,6 @@ import { safeReturnPath } from '@/server/auth';
 // Reads the session cookie and the live provider configuration, so it must be
 // rendered per request rather than baked into the build.
 export const dynamic = 'force-dynamic';
-
-/**
- * The landing display face. Spectral's chiseled, flared terminals read as
- * letters cut into stone — the one face on the page with a point of view,
- * scoped to the landing so the app past sign-in keeps its quiet system stack.
- * Self-hosted by next/font at build time; nothing is fetched at runtime, so
- * the CSP stays untouched.
- */
-const spectral = Spectral({
-  weight: ['500', '600'],
-  style: ['normal', 'italic'],
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--cairn-font-display-face',
-});
 
 const STEPS = [
   {
@@ -74,13 +58,13 @@ export default async function SignInPage({
   const demoMode = services.config.providers.auth.state !== 'ready';
 
   return (
-    <div className={`cairn-shell cairn-landing ${spectral.variable}`}>
+    <div className="cairn-shell cairn-landing">
       {/*
         THESIS: A night assembly — scattered context becomes one deliberately
         placed stack as the visitor scrolls. Refuses the category's grid of
         same-size feature cards.
-        OWN-WORLD: committed-dark cool ground (#10141a), one glowing indigo
-        accent, Spectral serif display in off-white, hairline borders, the 3D
+        OWN-WORLD: committed-dark cool ground (#10141a), one glowing amber
+        accent, a system-serif display in off-white, hairline borders, the 3D
         five-stone cairn as the page's protagonist. System sans body.
         STORY: someone tired of re-explaining their context to every AI tool
         watches their scattered pieces assemble into one trustworthy stack,

@@ -51,15 +51,19 @@ export default async function SettingsPage() {
       {/* ----------------------------- identity ----------------------------- */}
       <section aria-labelledby="identity" style={{ marginBottom: '2.5rem' }}>
         <h2 id="identity" className="cairn-section-title">
-          How connected AIs see you
+          Your summary
         </h2>
         <Card>
           <p className="cairn-card__description" style={{ marginTop: 0 }}>
-            The first thing a connected AI can ask for is a short summary of who you are and what
-            you are working on. It builds itself from the memory you keep. If you would rather say
-            it in your own words, edit it here — your version replaces the automatic one and stays
-            put until you clear it.
+            Cairn builds this Home summary from the memory you keep. If you would rather say it in
+            your own words, edit it here — your version replaces the automatic one and stays put
+            until you clear it.
           </p>
+          <Callout tone="info" title="Connected tools get their own safe view">
+            A connected AI receives a fresh summary made only from memory allowed by that
+            connection&apos;s project, type, sensitivity, and sharing permissions. A manual summary
+            is shown here and on Home, but is not sent around those controls.
+          </Callout>
           <p className="cairn-meta">
             <Badge tone={view.identity.override ? 'info' : 'good'}>
               {view.identity.override

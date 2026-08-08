@@ -1,10 +1,11 @@
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { WorkspaceCrypto } from '@cairn/crypto';
 import { type CairnTx, memoryRepo, normalizeRows, schema, sourcesRepo } from '@cairn/db';
 import {
   type ActorContext,
   type Citation,
   type Embedder,
+  type MemoryItem,
   type MemoryType,
   type RetrievedPassage,
   type SensitivityLevel,
@@ -53,6 +54,86 @@ interface Candidate {
 
 /** Reciprocal rank fusion. `k` damps the influence of any single ranker's tail. */
 const RRF_K = 60;
+
+/**
+ * Lists approved memory for whole-document views without decrypting anything the
+ * caller is not allowed to see. Canonical resources and `whoami` do not have a
+ * search query, so they use this metadata-first path instead of retrieval.
+ */
+export async function listDisclosableMemoryItems(
+  deps: Omit<SearchDeps, 'embedder'>,
+  actor: ActorContext,
+  options: { projectId?: Uuid; types?: MemoryType[]; limit?: number } = {},
+): Promise<MemoryItem[]> {
+  const conditions = [
+    eq(schema.memoryItems.workspaceId, actor.workspaceId),
+    eq(schema.memoryItems.status, 'approved'),
+    isNull(schema.memoryItems.deletedAt),
+  ];
+  if (options.projectId) conditions.push(eq(schema.memoryItems.projectId, options.projectId));
+  if (options.types?.length) conditions.push(inArray(schema.memoryItems.type, options.types));
+  if (actor.client) {
+    if (!actor.client.scopes.includes('memory:read')) return [];
+    conditions.push(eq(schema.memoryItems.visibility, 'share_with_authorized_clients'));
+
+    const allowedSensitivity =
+      actor.client.maxSensitivity === 'restricted'
+        ? ['normal', 'sensitive', 'restricted']
+        : actor.client.maxSensitivity === 'sensitive'
+          ? ['normal', 'sensitive']
+          : ['normal'];
+    conditions.push(inArray(schema.memoryItems.sensitivity, allowedSensitivity));
+
+    if (actor.client.projectIds !== null) {
+      if (actor.client.projectIds.length === 0) return [];
+      conditions.push(inArray(schema.memoryItems.projectId, actor.client.projectIds));
+    }
+    if (actor.client.memoryTypes !== null) {
+      if (actor.client.memoryTypes.length === 0) return [];
+      conditions.push(inArray(schema.memoryItems.type, actor.client.memoryTypes));
+    }
+  }
+
+  const metadata = await deps.tx
+    .select({
+      id: schema.memoryItems.id,
+      projectId: schema.memoryItems.projectId,
+      status: schema.memoryItems.status,
+      type: schema.memoryItems.type,
+      sensitivity: schema.memoryItems.sensitivity,
+      visibility: schema.memoryItems.visibility,
+    })
+    .from(schema.memoryItems)
+    .where(and(...conditions))
+    .orderBy(desc(schema.memoryItems.updatedAt), asc(schema.memoryItems.id))
+    .limit(Math.min(options.limit ?? 200, 1000));
+
+  const allowedIds = metadata
+    .filter(
+      (row) =>
+        disclosureBlockReason(actor, {
+          status: row.status as never,
+          type: row.type as MemoryType,
+          sensitivity: row.sensitivity as SensitivityLevel,
+          visibility: row.visibility as never,
+          projectId: row.projectId,
+        }) === null,
+    )
+    .map((row) => row.id);
+  if (allowedIds.length === 0) return [];
+
+  const rows = await deps.tx
+    .select()
+    .from(schema.memoryItems)
+    .where(
+      and(
+        eq(schema.memoryItems.workspaceId, actor.workspaceId),
+        inArray(schema.memoryItems.id, allowedIds),
+        isNull(schema.memoryItems.deletedAt),
+      ),
+    );
+  return rows.map((row) => memoryRepo.decryptMemoryRow(deps.crypto, row));
+}
 
 export async function searchMemory(
   deps: SearchDeps,

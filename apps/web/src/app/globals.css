@@ -312,19 +312,22 @@ a:hover {
   }
 }
 
-/* On a phone the seven sections wrap into a ragged block squeezed between the
-   wordmark and Sign out, which reads as clutter rather than as a set of
-   choices. Given the whole width they settle into two even rows. Nothing is
-   hidden behind a menu: every section stays one tap away, and the tap target
-   keeps its `--cairn-target` minimum height — only the horizontal padding
-   tightens. */
+/* On a phone the section pill gets its own row and scrolls as one compact
+   control. Every route remains one tap away without turning the header into a
+   two-row block of wrapped labels. */
 @media (max-width: 40rem) {
-  .cairn-nav {
+  .cairn-header__pill--nav {
     order: 3;
     width: 100%;
-    justify-content: center;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+  }
+  .cairn-header__pill--nav::-webkit-scrollbar {
+    display: none;
   }
   .cairn-nav__link {
+    flex: 0 0 auto;
     padding-inline: 0.6875rem;
     font-size: var(--cairn-text-sm);
   }
@@ -424,6 +427,21 @@ a:hover {
   font-size: var(--cairn-text-lg);
   font-weight: 600;
   margin: 0 0 0.75rem;
+}
+.cairn-section-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.cairn-eyebrow {
+  margin: 0 0 0.375rem;
+  color: var(--cairn-accent);
+  font-size: var(--cairn-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
 /* --------------------------------- bits ---------------------------------- */
@@ -535,6 +553,9 @@ pre.cairn-code {
   gap: 0.875rem;
   grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
 }
+.cairn-choice-grid--compact .cairn-choice-card {
+  min-height: 6rem;
+}
 .cairn-choice-card {
   display: flex;
   flex-direction: column;
@@ -568,6 +589,188 @@ pre.cairn-code {
 .cairn-choice-card__body {
   color: var(--cairn-ink-muted);
   font-size: var(--cairn-text-sm);
+}
+
+/* -------------------------- guided onboarding --------------------------- *
+ * First-run setup is a short route through the product, not a wall of equal
+ * settings. The four agents stay visible as peers; only the chosen setup opens
+ * below them. This gives someone one decision at a time without hiding what is
+ * available next. */
+.cairn-onboarding {
+  border: 1px solid var(--cairn-border);
+  border-radius: var(--cairn-radius-lg);
+  background:
+    radial-gradient(circle at 15% 0%, var(--cairn-accent-soft), transparent 42%),
+    var(--cairn-surface);
+  padding: clamp(1.125rem, 4vw, 2rem);
+}
+.cairn-onboarding__intro {
+  max-width: 42rem;
+}
+.cairn-onboarding__intro p:last-child {
+  margin: 0 0 1.25rem;
+  color: var(--cairn-ink-muted);
+}
+.cairn-onboarding-secondary {
+  margin-top: 2rem;
+}
+.cairn-agent-picker {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.625rem;
+}
+.cairn-agent-choice {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 4.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--cairn-border);
+  border-radius: var(--cairn-radius);
+  background: var(--cairn-surface-sunken);
+  color: var(--cairn-ink);
+  text-decoration: none;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease;
+}
+.cairn-agent-choice:hover,
+.cairn-agent-choice[aria-current='step'] {
+  border-color: var(--cairn-accent);
+  background: var(--cairn-accent-soft);
+  color: var(--cairn-ink);
+}
+.cairn-agent-choice__mark {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--cairn-border-strong);
+  border-radius: 999px;
+  background: var(--cairn-surface);
+  color: var(--cairn-accent);
+  font-family: var(--cairn-font-mono);
+  font-size: var(--cairn-text-xs);
+  font-weight: 700;
+}
+.cairn-agent-choice__name,
+.cairn-agent-choice__detail {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.cairn-agent-choice__name {
+  line-height: 1.3;
+}
+.cairn-agent-choice__detail {
+  margin-top: 0.125rem;
+  color: var(--cairn-ink-subtle);
+  font-size: var(--cairn-text-xs);
+  line-height: 1.35;
+}
+.cairn-agent-setup {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(17rem, 0.8fr);
+  gap: 0;
+  margin-block: 1rem;
+  border: 1px solid var(--cairn-accent);
+  border-radius: var(--cairn-radius-lg);
+  background: var(--cairn-surface);
+  overflow: hidden;
+}
+.cairn-agent-setup__main,
+.cairn-agent-setup__test {
+  min-width: 0;
+  padding: clamp(1rem, 3vw, 1.5rem);
+}
+.cairn-agent-setup__test {
+  border-left: 1px solid var(--cairn-border);
+  background: var(--cairn-surface-sunken);
+}
+.cairn-advanced-setup {
+  margin-top: 2rem;
+  border: 1px solid var(--cairn-border);
+  border-radius: var(--cairn-radius-lg);
+  background: var(--cairn-surface);
+}
+.cairn-advanced-setup > summary {
+  min-height: var(--cairn-target);
+  padding: 1rem 1.125rem;
+  cursor: pointer;
+  color: var(--cairn-ink);
+  font-weight: 650;
+}
+.cairn-advanced-setup[open] > summary {
+  border-bottom: 1px solid var(--cairn-border);
+}
+.cairn-advanced-setup__body {
+  padding: 1.125rem;
+}
+.cairn-onboarding-track {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  counter-reset: onboarding;
+}
+.cairn-onboarding-track li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  column-gap: 0.625rem;
+  padding-right: 0.75rem;
+  counter-increment: onboarding;
+  color: var(--cairn-ink-muted);
+  font-size: var(--cairn-text-xs);
+}
+.cairn-onboarding-track li::before {
+  content: counter(onboarding);
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: var(--cairn-accent-soft);
+  color: var(--cairn-accent);
+  font-weight: 700;
+}
+.cairn-onboarding-track strong,
+.cairn-onboarding-track span {
+  display: block;
+}
+.cairn-onboarding-track strong {
+  color: var(--cairn-ink);
+  font-size: var(--cairn-text-sm);
+}
+
+@media (max-width: 52rem) {
+  .cairn-agent-picker {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cairn-agent-setup {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cairn-agent-setup__test {
+    border-top: 1px solid var(--cairn-border);
+    border-left: 0;
+  }
+}
+@media (max-width: 34rem) {
+  .cairn-agent-picker,
+  .cairn-onboarding-track {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cairn-onboarding-track {
+    gap: 0.875rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cairn-agent-choice {
+    transition: none;
+  }
 }
 
 /* A question someone can try rather than compose. Sized to the same target as
@@ -616,6 +819,48 @@ pre.cairn-code {
 }
 .cairn-table-wrap {
   overflow-x: auto;
+}
+@media (max-width: 40rem) {
+  .cairn-table-wrap--responsive {
+    overflow: visible;
+  }
+  .cairn-table--responsive thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .cairn-table--responsive,
+  .cairn-table--responsive tbody,
+  .cairn-table--responsive tr,
+  .cairn-table--responsive td {
+    display: block;
+    width: 100%;
+  }
+  .cairn-table--responsive tr {
+    margin-bottom: 0.875rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--cairn-border);
+    border-radius: var(--cairn-radius);
+    background: var(--cairn-surface);
+  }
+  .cairn-table--responsive td {
+    display: grid;
+    grid-template-columns: minmax(5.5rem, 0.55fr) minmax(0, 1fr);
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+  }
+  .cairn-table--responsive td::before {
+    content: attr(data-label);
+    color: var(--cairn-ink-subtle);
+    font-size: var(--cairn-text-xs);
+    font-weight: 600;
+  }
 }
 
 /* Numbered how-to steps, used by app pages (e.g. Connected AIs). The landing
@@ -825,9 +1070,9 @@ pre.cairn-code {
 
 .cairn-landing {
   --landing-gutter: clamp(1.25rem, 4vw, 3rem);
-  /* Spectral when the landing loaded it; the system serif otherwise. Scoped
-     here so the app past sign-in never inherits the display face. */
-  --landing-display: var(--cairn-font-display-face, var(--cairn-font-serif));
+  /* A local system-serif stack keeps the carved, editorial register without a
+     build-time call to a third-party font host. */
+  --landing-display: var(--cairn-font-serif);
   position: relative;
   isolation: isolate;
   overflow-x: clip;
@@ -835,7 +1080,7 @@ pre.cairn-code {
   /*
    * The landing commits to the dark look regardless of system preference —
    * the one page in the product with visual ambition, and night suits it:
-   * the indigo accent glows instead of sitting flat, and the animated
+   * the amber accent glows instead of sitting flat, and the animated
    * stones read as lit objects rather than clip-art. The app past sign-in
    * still follows the person's own theme; only the marketing surface
    * commits.
@@ -852,10 +1097,10 @@ pre.cairn-code {
   --cairn-ink: #e7ecf2;
   --cairn-ink-muted: #a9b4bf;
   --cairn-ink-subtle: #7c8892;
-  --cairn-accent: #7c97f0;
-  --cairn-accent-hover: #94aeff;
-  --cairn-accent-soft: #202a47;
-  --cairn-accent-ink: #aabbf7;
+  --cairn-accent: #f0b429;
+  --cairn-accent-hover: #ffc94d;
+  --cairn-accent-soft: #33280f;
+  --cairn-accent-ink: #f6c85a;
   --cairn-good: #6cc79a;
   --cairn-good-soft: #1c3229;
   --cairn-warn: #dcb35f;
@@ -898,7 +1143,7 @@ pre.cairn-code {
   scroll-margin-top: 5.5rem;
 }
 
-/* Night light: one soft indigo wash behind the fold. Pure CSS. */
+/* Night light: one soft amber wash behind the fold. Pure CSS. */
 .cairn-landing::before {
   content: '';
   position: absolute;

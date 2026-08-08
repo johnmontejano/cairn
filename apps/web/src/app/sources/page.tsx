@@ -17,7 +17,7 @@ import {
 import { csrfToken, requireContext } from '@/server/context';
 import { loadSources } from '@/server/views';
 
-export const metadata = { title: 'Sources' };
+export const metadata = { title: 'Apps' };
 export const dynamic = 'force-dynamic';
 
 /**
@@ -83,10 +83,10 @@ export default async function SourcesPage() {
 
   return (
     <AppShell current="/sources" email={context.email}>
-      <h1 className="cairn-page-title">Sources</h1>
+      <h1 className="cairn-page-title">Apps</h1>
       <p className="cairn-page-lede">
-        Where your memory comes from. Everything here is read-only: nothing is ever changed in the
-        places you connect.
+        Keep your memory current from documents and places you already use. Every connection is
+        read-only: Cairn never changes the originals.
       </p>
 
       {/* People arrive here looking for Claude and ChatGPT, because "connect an
